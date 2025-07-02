@@ -1,0 +1,54 @@
+XBRL ist die Abkürzung des Begriffs „Extensible Business Reporting Language“. Diese „Sprache“ dient dazu, den Berichtsfluss von Unternehmensinformationen  vom Informationsgeber zum Informationsempfänger zu standardisieren und zu rationalisieren. Ein Schwergewicht liegt bei Jahresabschlussdaten (Bilanz, Gewinn- und Verlustrechnung sowie weitere Daten).
+
+Eine gute Nachricht gleich vorweg: XBRL ist ein freier Standard, den jeder unentgeltlich nutzen kann.
+
+XBRL: Informationsfluss ohne Medienbruch …
+
+Informationsgeber sind die berichtenden Unternehmen oder einzelne Unternehmensteile. Zur Empfängerseite gehören die Gesellschafter (Anteilseigner, auch Kapitalanleger), Geschäftspartner (darunter Kreditgeber), Stellen mit Aufsichtsfunktionen (so etwa die Finanzaufsicht), Steuerbehörden, Statistikämter, die interessierte Öffentlichkeit allgemein und – nicht zuletzt – auch andere Teile des gleichen Unternehmens oder der Unternehmensgruppe (innerbetriebliches Reporting).
+
+Heutzutage liegen im Prinzip bei allen Informationsgebern die fraglichen Daten in elektronischer, logisch und technisch strukturierter Form vor (Rechnungswesen-System und andere Datenbestände). Davon ausgehend ist die Zielvorstellung, dass
+
+die Daten an der Quelle automatisch in die XBRL-Standardform überführt werden,
+an den Empfänger elektronisch übermittelt werden und
+vom Empfänger wiederum automatisch in das eigene System zwecks Auswertung eingelesen werden können.
+Zum Vergleich: In der herkömmlichen Verfahrensweise werden beim Unternehmen die Daten zur Wiedergabe auf Papier, als Website-Text oder etwa als PDF aufbereitet. Die Informationen verlieren dabei ihre ursprüngliche Struktur. Die Empfänger müssen die Informationen aus den Texten/Tabellen herausfiltern, interpretieren, neu strukturieren und, zumeist von Hand, in ihre eigene Systeme eingeben.
+
+Der Vorteil des XBRL-basierten Verfahrens ist offenkundig: Es vermeidet den Medienbruch, der Informationsfluss wird dadurch schneller, fehlersicherer und kostengünstiger.
+
+… und mit einheitlicher Technik für viele Berichtszwecke und Beteiligte.
+
+Da der Berichtsfluss viele Beteiligte umfassen kann, jeder mit seinem eigenen Auswertungsziel, -verfahren und -system, bedarf es eines Standards, der für alle Ziele, Verfahren, Systeme tauglich ist. Wenn für jeden einzelnen Zweck ein eigener Berichtstandard praktiziert werden müsste, würde dies für die betroffenen Unternehmen – und in der Summe für die Gesamtwirtschaft – erhebliche Aufwände bedeuten, die eigentlich vermeidbar sind.
+
+Der Nutzen eines Standards liegt darin, dass er tatsächlich ein Standard ist, also eine große Zahl von Einzellösungen ersetzt. – Stellen Sie sich vor, ein Telefon könnte nur mit Geräten desselben Herstellers und desselben Typs kommunizieren. Das wäre nicht praktikabel. Erst der gemeinsame, hersteller- und typenunabhängige Kommunikationsstandard im Hintergrund ermöglicht die Einbindung eines jeden Gerätes, das sich dieses Standards bedient. Eine ähnliche Funktion erfüllt XBRL.
+
+Um möglichen Missverständnissen vorzubeugen:
+
+XBRL legt keine neuen Berichtspflichten fest – weder was den Inhalt von Berichten, noch den Umfang anbelangt – und nimmt keinen Einfluss auf Bilanzierungsstandards, die ein Unternehmen anwendet. XBRL stellt jedoch die Mittel bereit, die Berichtsinformationen sachgerecht und strukturiert darzustellen sowie automatisiert zu verarbeiten.
+
+Wie funktioniert XBRL? – Kurze Antwort
+
+Erstens: Eine Art „Baukasten“, das heißt ein Satz von allgemeinen Definitionen.
+
+Das ist zunächst die prinzipielle Beschreibung des einzelnen Berichtelements, aus dem sich – in vielfacher Wiederholung – ein kompletter Bericht zusammensetzt. Dieses Element enthält Datenfelder („Attribute“) wie: Fachliche Bedeutung des Elements (dies kann zum Beispiel der Posten „Umsatzerlöse“ sein), geforderter Typ der Wertangabe (in diesem Beispiel ein Geldbetrag) und ähnliches.
+Übergreifend dazu gehört ein Konstrukt, das logische und rechnerische Verknüpfungen der erwähnten Elemente untereinander und mit externen Informationsquellen erlaubt (um beim Beispiel zu bleiben: der Umsatz ist Bestandteil der Gewinn- und Verlustrechnung, ist eine Komponente bei der Ermittlung des Jahresüberschusses, ist in mehreren Paragrafen des Handelsgesetzbuchs und verschiedener Steuergesetze angesprochen, trägt unter anderem Bezeichnungen in verschiedenen Sprachen wie „Umsatzerlöse“ oder „Turnover“ und viele solcher Bezüge mehr).
+Zweitens: Fertig konfigurierte Vorlagen für Berichte, die sogenannten Taxonomien. Eine Taxonomie ist eine Art Katalog, der die für Berichtszwecke infrage kommenden Elemente enthält, ausgefüllt mit ihren Attributen und Verknüpfungen (wie oben beschrieben). Die Taxonomien für die gängigen Berichtsinhalte, etwa für den Jahresabschluss zur Einreichung beim Bundesanzeiger, sind bereits vordefiniert und brauchen nur noch abgerufen zu werden (zum Beispiel von dieser Website). Angesehen davon steht es jedem Interessenten frei, eine eigene Taxonomie zu entwickeln oder eine bestehende zu ändern / zu ergänzen, wenn es für ihn und für den Empfänger seiner Informationen zweckmäßig ist.
+
+So viel zum „Baukasten“ und zu den damit erstellten Berichtsvorlagen: In einem konkreten Bericht müssen die Elemente und Verknüpfungen nicht nochmals beschrieben werden; vielmehr genügt es – wieder vereinfacht dargestellt – ein bestimmtes Element aus der Taxonomie zu zitieren und den Wert (in unserem Beispiel den Umsatzbetrag mit Währungsangabe) sowie den dafür geltenden Zeitraum (bei Bilanzzahlen: Zeitpunkt) hinzuzufügen. So geschieht das mit allen Elementen, die der Bericht umfassen soll.
+
+Das hat folgende Vorteile:
+
+Berichte dieser Art sind sehr „schlank“. Alles, was allgemeingültiger Natur ist, braucht im Bericht nicht zu erscheinen. Das vermeidet Aufwand und etwaige Widersprüche.
+Wer eine der vorgefertigten Taxonomien verwendet, erspart sich die Arbeit, die darin inbegriffenen Inhalte und Strukturen selbst zu entwickeln. Berichte auf Basis derselben Taxonomie sind vergleichbar und erfüllen insoweit gegebenenfalls auch entsprechende Anforderungen der Informationsempfänger.
+Was wird benötigt, um XBRL zu nutzen?
+
+Der Standard und viele vorkonfigurierte Grundlagen, die Taxonomien, sind vorhanden. Individuell wird Software benötigt, eigene XBRL-Berichte zu erzeugen und/oder XBRL-Berichte zu lesen und zu verarbeiten. Auf der Erzeugerseite ist eine Schnittstelle erforderlich, die
+
+alle relevanten Daten nacheinander aus dem eigenen Datenbestand (Rechnungswesen) ausliest,
+in einer Zuordnungstabelle die Entsprechnungen der einzelnen Posten des eigenen Kontenrahmens zu den jeweiligen Posten der benutzten Taxonomie nachschlägt  und schließlich
+die Positionsbezeichnung gemäß Taxonomie plus Datenwert in den XBRL-Bericht schreibt.
+Auf der Empfängerseite ist das Prinzip ähnlich:
+
+Daten aus dem XBRL-Bericht lesen,
+in der eigenen Zuordnungstabelle den entsprechenden zum Platz in der eigenen Datenbank identifizieren und
+Wert für Wert importieren.
+Praktisch alle Hersteller von Rechnungswesen-Software haben solche Schnittstellen inzwischen in ihre Systeme integriert. Vielfach sind auch fertige Mappingtabellen für die Standard-Kontenrahmen verfügbar, sodass der einmalige Vorbereitungsaufwand in den Unternehmen überschaubar bleibt.
