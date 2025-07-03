@@ -15,27 +15,27 @@
   
   <link:schemaRef
     xlink:type="simple"
-    xlink:href="http://www.eba.europa.eu/eu/fr/xbrl/crr/fws/finrep/its-005-2020/2023-10-31/mod/finrep_cor.xsd"
+    xlink:href="./EBA_CRD_IV_XBRL_3.2_Dictionary_3.2.2.0/www.eba.europa.eu/eu/fr/xbrl/crr/fws/fws.xsd"
     xlink:arcrole="http://www.w3.org/1999/xlink/properties/linkbase"/>
 
   <!-- Metadata Comment -->
   <!--
     Generated XBRL Instance Document
-    Entity: ENTITY_1751476092767
-    Period: 2025-07-02
+    Entity: ENTITY_1751531025589
+    Period: 2025-07-03
     Regulation: FINREP
     Perspective: Bilanz
-    Generated: 2025-07-02T17:08:12.798Z
+    Generated: 2025-07-03T08:23:45.610Z
   -->
 
   <!-- Contexts -->
   
   <context id="c1">
     <entity>
-      <identifier scheme="http://www.bundesbank.de">ENTITY_1751476092767</identifier>
+      <identifier scheme="http://www.bundesbank.de">ENTITY_1751531025589</identifier>
     </entity>
     <period>
-      <instant>2025-07-02</instant>
+      <instant>2025-07-03</instant>
     </period>
     
   </context>
@@ -53,13 +53,13 @@
   </unit>
 
   <!-- Facts -->
-  <finrep:CashBalancesAtCentralBanks contextRef="c1" unitRef="u1" decimals="0">178003</finrep:CashBalancesAtCentralBanks>
-  <finrep:LoansAndAdvances contextRef="c1" unitRef="u1" decimals="0">612153</finrep:LoansAndAdvances>
-  <finrep:EquityInstruments contextRef="c1" unitRef="u1" decimals="0">122147</finrep:EquityInstruments>
-  <finrep:FinancialLiabilitiesAtAmortisedCost contextRef="c1" unitRef="u1" decimals="0">326964</finrep:FinancialLiabilitiesAtAmortisedCost>
-  <finrep:Derivatives contextRef="c1" unitRef="u1" decimals="0">153359</finrep:Derivatives>
-  <finrep:Deposits contextRef="c1" unitRef="u1" decimals="0">9810</finrep:Deposits>
-  <finrep:TotalAssets contextRef="c1" unitRef="u1" decimals="0">199350</finrep:TotalAssets>
-  <finrep:Equity contextRef="c1" unitRef="u1" decimals="0">917892</finrep:Equity>
+  <finrep:CashBalancesAtCentralBanks contextRef="c1" unitRef="u1" decimals="0">445575</finrep:CashBalancesAtCentralBanks>
+  <finrep:LoansAndAdvances contextRef="c1" unitRef="u1" decimals="0">734577</finrep:LoansAndAdvances>
+  <finrep:EquityInstruments contextRef="c1" unitRef="u1" decimals="0">610987</finrep:EquityInstruments>
+  <finrep:FinancialLiabilitiesAtAmortisedCost contextRef="c1" unitRef="u1" decimals="0">549924</finrep:FinancialLiabilitiesAtAmortisedCost>
+  <finrep:Derivatives contextRef="c1" unitRef="u1" decimals="0">466058</finrep:Derivatives>
+  <finrep:DepositsByBanksAndCustomers contextRef="c1" unitRef="u1" decimals="0">212319</finrep:DepositsByBanksAndCustomers>
+  <finrep:TotalAssets contextRef="c1" unitRef="u1" decimals="0">80579</finrep:TotalAssets>
+  <finrep:Equity contextRef="c1" unitRef="u1" decimals="0">138389</finrep:Equity>
 
 </xbrl>

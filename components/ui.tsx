@@ -527,7 +527,7 @@ export const MappingTable: React.FC<MappingTableProps> = ({
                     {mapping.dataType}
                   </span>
                 </td>
-                <td className="py-3 px-4 text-gray-600 max-w-xs truncate">
+                <td className="py-3 px-4 text-gray-600 max-w-xs">
                   {mapping.description}
                 </td>
                 {!readonly && (

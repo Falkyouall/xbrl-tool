@@ -3,19 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FormData, OpenAIMappingResponse, XBRLMapping } from '@/types';
-import { 
-  Card, 
-  ProgressIndicator, 
-  MappingTable, 
-  Navigation, 
-  Alert, 
-  Button 
+import {
+  Card,
+  ProgressIndicator,
+  MappingTable,
+  Navigation,
+  Alert,
+  Button
 } from '@/components/ui';
-import { 
-  loadFromSessionStorage, 
-  saveToSessionStorage, 
+import {
+  loadFromSessionStorage,
+  saveToSessionStorage,
   removeFromSessionStorage,
-  formatFileSize 
+  formatFileSize
 } from '@/lib/utils';
 import { regenerateMapping, generateXBRLDocument } from '@/app/actions/mapping';
 import { Download, RefreshCw, CheckCircle, AlertTriangle, Info, FileText } from 'lucide-react';
@@ -47,16 +47,16 @@ export default function ResultPage() {
       regulation: '',
       perspective: ''
     });
-    
+
     const savedMappingResult = loadFromSessionStorage<OpenAIMappingResponse | null>('xbrl-mapping-result', null);
     const savedFileInfo = loadFromSessionStorage<FileInfo | null>('xbrl-file-info', null);
-    
+
     // Redirect if essential data is missing
     if (!savedFormData.recipient || !savedMappingResult) {
       router.push('/');
       return;
     }
-    
+
     setFormData(savedFormData);
     setMappingResult(savedMappingResult);
     setFileInfo(savedFileInfo);
@@ -64,10 +64,10 @@ export default function ResultPage() {
 
   const handleRegenerate = async () => {
     if (!mappingResult || !fileInfo) return;
-    
+
     setIsRegenerating(true);
     setError('');
-    
+
     try {
       // For regeneration, we would need the original columns data
       // In a real implementation, we'd store this in session storage too
@@ -82,7 +82,7 @@ export default function ResultPage() {
 
   const handleDownload = () => {
     if (!mappingResult || !fileInfo) return;
-    
+
     const exportData = {
       metadata: {
         fileName: fileInfo.name,
@@ -101,9 +101,9 @@ export default function ResultPage() {
         warnings: mappingResult.warnings
       }
     };
-    
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
-      type: 'application/json' 
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: 'application/json'
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -117,10 +117,10 @@ export default function ResultPage() {
 
   const handleDownloadXBRL = async () => {
     if (!mappingResult || !fileInfo) return;
-    
+
     setIsRegenerating(true);
     setError('');
-    
+
     try {
       // Call server action to generate XBRL
       const result = await generateXBRLDocument(
@@ -144,8 +144,8 @@ export default function ResultPage() {
       }
 
       // Create and download file
-      const blob = new Blob([result.data], { 
-        type: 'application/xml' 
+      const blob = new Blob([result.data], {
+        type: 'application/xml'
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -155,7 +155,7 @@ export default function ResultPage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
     } catch (error) {
       console.error('Error generating XBRL:', error);
       setError(`Fehler beim Generieren der XBRL-Datei: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
@@ -186,7 +186,7 @@ export default function ResultPage() {
               Keine Mapping-Ergebnisse gefunden
             </h2>
             <p className="text-gray-600 mb-6">
-              Es scheint, als ob keine Mapping-Daten verfügbar sind. 
+              Es scheint, als ob keine Mapping-Daten verfügbar sind.
               Bitte beginnen Sie den Prozess von vorne.
             </p>
             <Button onClick={() => router.push('/')}>
@@ -225,7 +225,7 @@ export default function ResultPage() {
           onClose={() => setShowSuccess(false)}
         >
           <p>
-            Ihre Excel-Datei wurde erfolgreich analysiert und {mappingResult.mappings.length} 
+            Ihre Excel-Datei wurde erfolgreich analysiert und {mappingResult.mappings.length}
             XBRL-Mappings wurden generiert. Überprüfen Sie die Ergebnisse unten.
           </p>
         </Alert>
@@ -252,7 +252,7 @@ export default function ResultPage() {
             <div className="text-sm text-gray-600">Mappings generiert</div>
           </div>
         </Card>
-        
+
         <Card padding="sm">
           <div className="text-center">
             <div className="text-2xl font-bold text-green-600">
@@ -261,7 +261,7 @@ export default function ResultPage() {
             <div className="text-sm text-gray-600">Hohe Konfidenz (≥80%)</div>
           </div>
         </Card>
-        
+
         <Card padding="sm">
           <div className="text-center">
             <div className="text-2xl font-bold text-yellow-600">
@@ -270,7 +270,7 @@ export default function ResultPage() {
             <div className="text-sm text-gray-600">Mittlere Konfidenz (60-79%)</div>
           </div>
         </Card>
-        
+
         <Card padding="sm">
           <div className="text-center">
             <div className="text-2xl font-bold text-red-600">
@@ -375,7 +375,7 @@ export default function ResultPage() {
           <RefreshCw className="w-4 h-4 mr-2" />
           Mapping neu generieren
         </Button>
-        
+
         <Button
           variant="primary"
           onClick={handleDownloadXBRL}
@@ -385,7 +385,7 @@ export default function ResultPage() {
           <FileText className="w-4 h-4 mr-2" />
           XBRL-Datei herunterladen
         </Button>
-        
+
         <Button
           variant="outline"
           onClick={handleDownload}
@@ -393,7 +393,7 @@ export default function ResultPage() {
           <Download className="w-4 h-4 mr-2" />
           JSON-Mapping herunterladen
         </Button>
-        
+
         <Button
           variant="secondary"
           onClick={handleStartOver}
@@ -413,8 +413,8 @@ export default function ResultPage() {
               {mappingResult.mappings.length} Mappings gefunden
             </div>
           </div>
-          
-          <MappingTable 
+
+          <MappingTable
             mappings={mappingResult.mappings}
             readonly={true}
           />
@@ -434,12 +434,12 @@ export default function ResultPage() {
                 <h4 className="font-medium text-green-900">Hohe Konfidenz</h4>
               </div>
               <p className="text-sm text-gray-600">
-                {highConfidenceMappings.length} Mappings mit über 80% Konfidenz. 
+                {highConfidenceMappings.length} Mappings mit über 80% Konfidenz.
                 Diese können direkt verwendet werden.
               </p>
             </div>
           )}
-          
+
           {mediumConfidenceMappings.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -447,12 +447,12 @@ export default function ResultPage() {
                 <h4 className="font-medium text-yellow-900">Mittlere Konfidenz</h4>
               </div>
               <p className="text-sm text-gray-600">
-                {mediumConfidenceMappings.length} Mappings sollten überprüft werden, 
+                {mediumConfidenceMappings.length} Mappings sollten überprüft werden,
                 bevor sie verwendet werden.
               </p>
             </div>
           )}
-          
+
           {lowConfidenceMappings.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -460,7 +460,7 @@ export default function ResultPage() {
                 <h4 className="font-medium text-red-900">Niedrige Konfidenz</h4>
               </div>
               <p className="text-sm text-gray-600">
-                {lowConfidenceMappings.length} Mappings benötigen manuelle Überprüfung 
+                {lowConfidenceMappings.length} Mappings benötigen manuelle Überprüfung
                 und möglicherweise Anpassung.
               </p>
             </div>
@@ -482,8 +482,8 @@ export default function ResultPage() {
             🚀 Nächste Schritte
           </h3>
           <p className="text-blue-800 max-w-3xl mx-auto">
-            Mit den generierten XBRL-Mappings können Sie nun Ihre Excel-Daten in 
-            das XBRL-Format konvertieren. Laden Sie die Ergebnisse herunter und 
+            Mit den generierten XBRL-Mappings können Sie nun Ihre Excel-Daten in
+            das XBRL-Format konvertieren. Laden Sie die Ergebnisse herunter und
             überprüfen Sie Mappings mit niedriger Konfidenz vor der finalen Verwendung.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">

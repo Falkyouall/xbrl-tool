@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE catalog PUBLIC "-//OASIS//DTD Entity Resolution XML Catalog V1.0//EN" "http://www.oasis-open.org/committees/entity/release/1.0/catalog.dtd">
+<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+
+<!-- Dictionary -->
+<rewriteURI uriStartString="http://www.eba.europa.eu/eu/fr/xbrl/ext/" rewritePrefix="../www.eba.europa.eu/eu/fr/xbrl/ext/" />
+<rewriteURI uriStartString="http://www.eba.europa.eu/eu/fr/xbrl/crr/fws/fws.xsd" rewritePrefix="../www.eba.europa.eu/eu/fr/xbrl/crr/fws/fws.xsd" />
+<rewriteURI uriStartString="http://www.eba.europa.eu/eu/fr/xbrl/crr/fws/fws-lab-codes.xml" rewritePrefix="../www.eba.europa.eu/eu/fr/xbrl/crr/fws/fws-lab-codes.xml" />
+<rewriteURI uriStartString="http://www.eba.europa.eu/eu/fr/xbrl/crr/fws/fws-lab-en.xml" rewritePrefix="../www.eba.europa.eu/eu/fr/xbrl/crr/fws/fws-lab-en.xml" />
+<rewriteURI uriStartString="http://www.eba.europa.eu/eu/fr/xbrl/crr/func/" rewritePrefix="../www.eba.europa.eu/eu/fr/xbrl/crr/func/" />
+<rewriteURI uriStartString="http://www.eba.europa.eu/eu/fr/xbrl/crr/dict/" rewritePrefix="../www.eba.europa.eu/eu/fr/xbrl/crr/dict/" />
+</catalog>

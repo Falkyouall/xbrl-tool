@@ -155,7 +155,7 @@ export const generateXBRLMapping = async (
     // Initialize OpenAI client (only on server side)
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
-      organization: "org-aY6U7OSfsvWj8mLLjQkia0mC"
+      organization: process.env.OPENAI_ORGANISATION
     });
     const prompt = generateMappingPrompt({
       recipient: formData.recipient as any,

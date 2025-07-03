@@ -132,9 +132,15 @@ const TAG_MAPPINGS = {
 };
 
 // Schema reference mapping based on regulation
+// const SCHEMA_REFERENCES = {
+//   'IFRS': 'http://xbrl.ifrs.org/taxonomy/2023-03-23/full_ifrs/full_ifrs-cor_2023-03-23.xsd',
+//   'FINREP': 'http://www.eba.europa.eu/eu/fr/xbrl/crr/fws/finrep/its-005-2020/2023-10-31/mod/finrep_cor.xsd',
+//   'COREP': 'http://www.eba.europa.eu/eu/fr/xbrl/crr/fws/corep/its-005-2020/2023-10-31/mod/corep_cor.xsd',
+//   'HGB': 'http://www.xbrl.de/taxonomies/de-gaap/2023-12-31/de-gaap-ci-2023-12-31.xsd'
+// };
 const SCHEMA_REFERENCES = {
   'IFRS': 'http://xbrl.ifrs.org/taxonomy/2023-03-23/full_ifrs/full_ifrs-cor_2023-03-23.xsd',
-  'FINREP': 'http://www.eba.europa.eu/eu/fr/xbrl/crr/fws/finrep/its-005-2020/2023-10-31/mod/finrep_cor.xsd',
+  'FINREP': './EBA_CRD_IV_XBRL_3.2_Dictionary_3.2.2.0/www.eba.europa.eu/eu/fr/xbrl/crr/fws/fws.xsd',
   'COREP': 'http://www.eba.europa.eu/eu/fr/xbrl/crr/fws/corep/its-005-2020/2023-10-31/mod/corep_cor.xsd',
   'HGB': 'http://www.xbrl.de/taxonomies/de-gaap/2023-12-31/de-gaap-ci-2023-12-31.xsd'
 };
@@ -178,9 +184,9 @@ export function generateXBRLInstance(
       period: formData.perspective === 'Bilanz'
         ? { instant: reportingDate }
         : {
-            startDate: `${reportingDate.substring(0, 4)}-01-01`,
-            endDate: reportingDate
-          }
+          startDate: `${reportingDate.substring(0, 4)}-01-01`,
+          endDate: reportingDate
+        }
     }
   ];
 
@@ -201,49 +207,49 @@ export function generateXBRLInstance(
   ];
 
   // Generate facts from mappings
-    const facts: XBRLFact[] = mappingResponse.mappings.map((mapping, index) => {
-      // Convert to regulation-specific tag
-      const regulationTag = convertToRegulationTag(mapping.xbrlTag, formData.regulation);
-      const namespace = getNamespaceFromTag(regulationTag);
-      const elementName = getElementNameFromTag(regulationTag);
-    
-      // Determine unit based on data type
-      let unitRef: string | undefined;
-      switch (mapping.dataType) {
-        case 'monetary':
-          unitRef = 'u1';
-          break;
-        case 'shares':
-          unitRef = 'shares';
-          break;
-        case 'decimal':
-        case 'string':
-        default:
-          unitRef = mapping.dataType === 'decimal' ? 'pure' : undefined;
-          break;
-      }
+  const facts: XBRLFact[] = mappingResponse.mappings.map((mapping, index) => {
+    // Convert to regulation-specific tag
+    const regulationTag = convertToRegulationTag(mapping.xbrlTag, formData.regulation);
+    const namespace = getNamespaceFromTag(regulationTag);
+    const elementName = getElementNameFromTag(regulationTag);
 
-      // Generate sample value or use from Excel data if available
-      let value: string | number = '0';
-      if (excelData && excelData.length > 0) {
-        const rowData = excelData[0]; // Use first row as example
-        if (rowData[mapping.excelColumn]) {
-          value = rowData[mapping.excelColumn];
-        }
-      } else {
-        // Generate sample values based on data type
-        value = generateSampleValue(mapping.dataType, mapping.excelColumn);
-      }
+    // Determine unit based on data type
+    let unitRef: string | undefined;
+    switch (mapping.dataType) {
+      case 'monetary':
+        unitRef = 'u1';
+        break;
+      case 'shares':
+        unitRef = 'shares';
+        break;
+      case 'decimal':
+      case 'string':
+      default:
+        unitRef = mapping.dataType === 'decimal' ? 'pure' : undefined;
+        break;
+    }
 
-      return {
-        name: elementName,
-        contextRef: 'c1',
-        unitRef,
-        decimals: mapping.dataType === 'monetary' ? '0' : undefined,
-        value,
-        namespace
-      };
-    });
+    // Generate sample value or use from Excel data if available
+    let value: string | number = '0';
+    if (excelData && excelData.length > 0) {
+      const rowData = excelData[0]; // Use first row as example
+      if (rowData[mapping.excelColumn]) {
+        value = rowData[mapping.excelColumn];
+      }
+    } else {
+      // Generate sample values based on data type
+      value = generateSampleValue(mapping.dataType, mapping.excelColumn);
+    }
+
+    return {
+      name: elementName,
+      contextRef: 'c1',
+      unitRef,
+      decimals: mapping.dataType === 'monetary' ? '0' : undefined,
+      value,
+      namespace
+    };
+  });
 
   return {
     contexts,
@@ -300,8 +306,8 @@ export function generateXBRLXML(instance: XBRLInstance): string {
     const scenarioXML = context.scenario?.explicitMember
       ? `<scenario>
            ${context.scenario.explicitMember.map(member =>
-             `<xbrldi:explicitMember dimension="${member.dimension}">${member.value}</xbrldi:explicitMember>`
-           ).join('\n           ')}
+        `<xbrldi:explicitMember dimension="${member.dimension}">${member.value}</xbrldi:explicitMember>`
+      ).join('\n           ')}
          </scenario>`
       : '';
 
@@ -458,8 +464,8 @@ function generateSampleValue(dataType?: string, columnName?: string): string | n
     default:
       // Try to infer from column name
       if (columnName?.toLowerCase().includes('amount') ||
-          columnName?.toLowerCase().includes('value') ||
-          columnName?.toLowerCase().includes('betrag')) {
+        columnName?.toLowerCase().includes('value') ||
+        columnName?.toLowerCase().includes('betrag')) {
         return Math.floor(Math.random() * 1000000);
       }
       return 'Sample Value';

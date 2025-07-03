@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<taxonomyPackage xml:lang="en" xmlns="http://xbrl.org/2016/taxonomy-package"  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://xbrl.org/2016/taxonomy-package http://www.xbrl.org/2016/taxonomy-package.xsd">
+
+  <identifier>http://www.eba.europa.eu/eu/fr/xbrl/tp/3.2.2/EBA_CRD_IV_XBRL_3.2_Dictionary_3.2.2.0.zip</identifier>
+  <name>EBA CRD IV XBRL 3.2 Dictionary 3.2.2.0</name>
+  <description>EBA CRD IV XBRL dictionary - DPM 3.2.2(3.2.2.0)</description>
+  <version>3.2.2.0</version>
+  <publisher>European Banking Authority</publisher>
+  <publisherURL>http://www.eba.europa.eu/</publisherURL>
+  <publicationDate>2022-09-30</publicationDate>
+
+
+  <entryPoints>
+  </entryPoints>
+</taxonomyPackage>
