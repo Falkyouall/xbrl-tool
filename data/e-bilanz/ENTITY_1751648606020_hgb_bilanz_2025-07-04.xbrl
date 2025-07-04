@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xbrl xmlns="http://www.xbrl.org/2003/instance"
+    xmlns:link="http://www.xbrl.org/2003/linkbase"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:xbrldi="http://xbrl.org/2006/xbrldi"
+    xmlns:iso4217="http://www.xbrl.org/2003/iso4217"
+    xmlns:ifrs-full="http://xbrl.ifrs.org/taxonomy/2023-03-23/ifrs-full"
+    xmlns:finrep="http://www.eba.europa.eu/xbrl/crr/fws/finrep/its-005-2020"
+    xmlns:corep="http://www.eba.europa.eu/xbrl/crr/fws/corep/its-005-2020"
+    xmlns:de-gaap-ci="http://www.xbrl.de/taxonomies/de-gaap-ci-2024-04-01"
+    xsi:schemaLocation="http://www.xbrl.org/2003/instance http://www.xbrl.org/2003/xbrl-instance-2003-12-31.xsd">
+
+  <!-- Schema Reference -->
+  
+  <link:schemaRef
+    xlink:type="simple"
+    xlink:href="./taxonomies/de-gaap-ci-2024-04-01/de-gaap-ci-2024-04-01.xsd"
+    xlink:arcrole="http://www.w3.org/1999/xlink/properties/linkbase"/>
+
+  <!-- Metadata Comment -->
+  <!--
+    Generated XBRL Instance Document
+    Entity: ENTITY_1751648606020
+    Period: 2025-07-04
+    Regulation: HGB
+    Perspective: Bilanz
+    Generated: 2025-07-04T17:03:26.068Z
+  -->
+
+  <!-- Contexts -->
+  
+  <context id="c1">
+    <entity>
+      <identifier scheme="http://www.bundesbank.de">ENTITY_1751648606020</identifier>
+    </entity>
+    <period>
+      <instant>2025-07-04</instant>
+    </period>
+    
+  </context>
+
+  <!-- Units -->
+  
+  <unit id="u1">
+    <measure>iso4217:EUR</measure>
+  </unit>
+  <unit id="pure">
+    <measure>pure</measure>
+  </unit>
+  <unit id="shares">
+    <measure>shares</measure>
+  </unit>
+
+  <!-- Facts -->
+  <de-gaap-ci:bs.ass.fixAss.intang contextRef="c1" unitRef="u1" decimals="0">467604</de-gaap-ci:bs.ass.fixAss.intang>
+  <de-gaap-ci:bs.ass.fixAss.tang contextRef="c1" unitRef="u1" decimals="0">500000</de-gaap-ci:bs.ass.fixAss.tang>
+  <de-gaap-ci:bs.ass.fixAss.fin contextRef="c1" unitRef="u1" decimals="0">200000</de-gaap-ci:bs.ass.fixAss.fin>
+  <de-gaap-ci:bs.ass.currAss.inventory.material contextRef="c1" unitRef="u1" decimals="0">100000</de-gaap-ci:bs.ass.currAss.inventory.material>
+  <de-gaap-ci:bs.ass.currAss.inventory.inProgress contextRef="c1" unitRef="u1" decimals="0">200000</de-gaap-ci:bs.ass.currAss.inventory.inProgress>
+  <de-gaap-ci:bs.ass.currAss.inventory.finishedAndMerch contextRef="c1" unitRef="u1" decimals="0">200000</de-gaap-ci:bs.ass.currAss.inventory.finishedAndMerch>
+  <de-gaap-ci:bs.ass.currAss.receiv.trade contextRef="c1" unitRef="u1" decimals="0">200000</de-gaap-ci:bs.ass.currAss.receiv.trade>
+  <de-gaap-ci:bs.ass.currAss.receiv.other contextRef="c1" unitRef="u1" decimals="0">200000</de-gaap-ci:bs.ass.currAss.receiv.other>
+  <de-gaap-ci:bs.ass.currAss.securities contextRef="c1" unitRef="u1" decimals="0">90000</de-gaap-ci:bs.ass.currAss.securities>
+  <de-gaap-ci:bs.ass.currAss.cashEquiv.cash contextRef="c1" unitRef="u1" decimals="0">20000</de-gaap-ci:bs.ass.currAss.cashEquiv.cash>
+  <de-gaap-ci:bs.ass.currAss.cashEquiv.bank contextRef="c1" unitRef="u1" decimals="0">400000</de-gaap-ci:bs.ass.currAss.cashEquiv.bank>
+  <de-gaap-ci:bs.ass.currAss.prepaidExp contextRef="c1" unitRef="u1" decimals="0">88338</de-gaap-ci:bs.ass.currAss.prepaidExp>
+  <de-gaap-ci:bs.ass contextRef="c1" unitRef="u1" decimals="0">1500000</de-gaap-ci:bs.ass>
+  <de-gaap-ci:bs.eqLiab.equity.subscribedCap contextRef="c1" unitRef="u1" decimals="0">250000</de-gaap-ci:bs.eqLiab.equity.subscribedCap>
+  <de-gaap-ci:bs.eqLiab.equity.capRes contextRef="c1" unitRef="u1" decimals="0">100000</de-gaap-ci:bs.eqLiab.equity.capRes>
+  <de-gaap-ci:bs.eqLiab.equity.revRes contextRef="c1" unitRef="u1" decimals="0">180000</de-gaap-ci:bs.eqLiab.equity.revRes>
+  <de-gaap-ci:bs.eqLiab.equity.netIncome contextRef="c1" unitRef="u1" decimals="0">50000</de-gaap-ci:bs.eqLiab.equity.netIncome>
+  <de-gaap-ci:bs.eqLiab.provisions.pension contextRef="c1" unitRef="u1" decimals="0">150000</de-gaap-ci:bs.eqLiab.provisions.pension>
+  <de-gaap-ci:bs.eqLiab.provisions.other contextRef="c1" unitRef="u1" decimals="0">150000</de-gaap-ci:bs.eqLiab.provisions.other>
+  <de-gaap-ci:bs.eqLiab.liab.bank contextRef="c1" unitRef="u1" decimals="0">750000</de-gaap-ci:bs.eqLiab.liab.bank>
+  <de-gaap-ci:bs.eqLiab.liab.trade contextRef="c1" unitRef="u1" decimals="0">750000</de-gaap-ci:bs.eqLiab.liab.trade>
+  <de-gaap-ci:bs.eqLiab.liab.bonds contextRef="c1" unitRef="u1" decimals="0">90000</de-gaap-ci:bs.eqLiab.liab.bonds>
+  <de-gaap-ci:bs.eqLiab.liab.other contextRef="c1" unitRef="u1" decimals="0">750000</de-gaap-ci:bs.eqLiab.liab.other>
+  <de-gaap-ci:bs.eqLiab.defRev contextRef="c1" unitRef="u1" decimals="0">707730</de-gaap-ci:bs.eqLiab.defRev>
+  <de-gaap-ci:bs.eqLiab contextRef="c1" unitRef="u1" decimals="0">1500000</de-gaap-ci:bs.eqLiab>
+
+</xbrl>

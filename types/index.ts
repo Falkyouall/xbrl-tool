@@ -36,6 +36,7 @@ export interface ExcelColumn {
   index: number;
   type?: 'string' | 'number' | 'date' | 'boolean';
   sampleValues?: (string | number | boolean | null)[];
+  allValues?: (string | number | boolean | null)[]; // All values for XBRL generation
   dataTypeAnalysis?: DataTypeAnalysis;
 }
 
@@ -118,6 +119,7 @@ export interface MappingResult extends ServerActionResult<OpenAIMappingResponse>
   processingTime?: number;
   columnsProcessed?: number;
   originalColumns?: ExcelColumn[];
+  excelDataset?: any[]; // Complete Excel dataset for XBRL generation
 }
 
 // Progress and loading states

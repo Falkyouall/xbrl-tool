@@ -1,7 +1,7 @@
 'use server';
 
 import { FormData, MappingResult, ExcelColumn, OpenAIMappingResponse, XBRLInstance } from '@/types';
-import { parseExcelFile, generateXBRLMapping, validateExcelFile, validateFormData, analyzeColumnDataTypes } from '@/lib/utils';
+import { parseExcelFile, parseExcelFileForXBRL, generateXBRLMapping, validateExcelFile, validateFormData, analyzeColumnDataTypes } from '@/lib/utils';
 import { XBRLGenerator } from '@/lib/xbrl-generator';
 
 export async function processFileAndGenerateMapping(
@@ -36,10 +36,13 @@ export async function processFileAndGenerateMapping(
       };
     }
 
-    // Parse Excel file
+    // Parse Excel file with complete dataset
     let columns: ExcelColumn[];
+    let dataset: any[] = [];
     try {
-      columns = await parseExcelFile(file);
+      const parseResult = await parseExcelFileForXBRL(file);
+      columns = parseResult.columns;
+      dataset = parseResult.dataset;
       
       if (columns.length === 0) {
         return {
@@ -54,6 +57,8 @@ export async function processFileAndGenerateMapping(
           error: 'Zu viele Spalten in der Excel-Datei. Maximum: 50 Spalten'
         };
       }
+
+      console.log(`Parsed Excel file: ${columns.length} columns, ${dataset.length} rows`);
     } catch (error) {
       console.error('Excel parsing error:', error);
       return {
@@ -101,7 +106,8 @@ export async function processFileAndGenerateMapping(
       message: 'XBRL-Mapping erfolgreich generiert',
       processingTime,
       columnsProcessed: analyzedColumns.length,
-      originalColumns: analyzedColumns
+      originalColumns: analyzedColumns,
+      excelDataset: dataset // Include the complete dataset for XBRL generation
     };
 
   } catch (error) {
@@ -233,6 +239,8 @@ export async function generateXBRLDocument(
     entityId?: string;
     reportingDate?: string;
     currency?: string;
+    excelDataset?: any[];
+    analyzedColumns?: ExcelColumn[];
   }
 ): Promise<{ success: boolean; data?: string; filename?: string; error?: string }> {
   try {
@@ -256,19 +264,21 @@ export async function generateXBRLDocument(
     const {
       entityId = `ENTITY_${Date.now()}`,
       reportingDate = new Date().toISOString().split('T')[0],
-      currency = 'EUR'
+      currency = 'EUR',
+      excelDataset = [],
+      analyzedColumns = []
     } = options || {};
 
-    // Generate XBRL instance with realistic German balance sheet values
+    // Generate XBRL instance with real Excel data
     const xbrlInstance = XBRLGenerator.generateInstance(
       mappingResponse,
       formData,
-      undefined, // No Excel data for now - could be extended later
+      excelDataset, // Pass the real Excel dataset
       {
         entityId,
         reportingDate,
         currency,
-        analyzedColumns: [] // Could be passed from the original request if needed
+        analyzedColumns // Pass the analyzed columns
       }
     );
 

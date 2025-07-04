@@ -28,7 +28,7 @@ export default function UploadPage() {
   const { formData, setFormData } = useFormData();
   const { setOriginalColumns, setFileInfo } = useFileState();
   const { isProcessing, setIsProcessing, processingStep, setProcessingStep } = useProcessingState();
-  const { setMappingResult } = useXBRLStore();
+  const { setMappingResult, setExcelDataset } = useXBRLStore();
   
   // Local state for upload-specific UI
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -122,6 +122,11 @@ export default function UploadPage() {
       // Save original columns for regeneration
       if (result.originalColumns) {
         setOriginalColumns(result.originalColumns);
+      }
+      
+      // Save Excel dataset for XBRL generation
+      if (result.excelDataset) {
+        setExcelDataset(result.excelDataset);
       }
       
       // Also save to session storage as backup for page refresh

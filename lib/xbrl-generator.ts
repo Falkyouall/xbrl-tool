@@ -1,4 +1,5 @@
 import { FormData, XBRLMapping, OpenAIMappingResponse, ExcelColumn } from '@/types';
+import { parseInternationalNumber } from '@/lib/utils';
 
 // XBRL 2.1 Standard interfaces
 export interface XBRLContext {
@@ -279,36 +280,62 @@ export function generateXBRLInstance(
         }
       }
 
-      // Generate realistic sample values based on German balance sheet structure
+      // Use real Excel data when available with German number parsing
       let value: string | number = 0;
       if (excelData && excelData.length > 0) {
-        const rowData = excelData[0]; // Use first row as example
-        if (rowData[mapping.excelColumn]) {
-          value = rowData[mapping.excelColumn];
+        // Look for actual Excel values for this column
+        const columnName = mapping.excelColumn;
+        
+        // Try to find a matching value in the Excel dataset
+        let foundValue = null;
+        for (const row of excelData) {
+          if (row[columnName] != null && row[columnName] !== '') {
+            foundValue = row[columnName];
+            break; // Use the first non-empty value found
+          }
+        }
+        
+        if (foundValue != null) {
+          // Parse international number format (language-independent)
+          const parsedValue = parseInternationalNumber(foundValue);
+          if (parsedValue !== null) {
+            value = parsedValue;
+            console.log(`Using real Excel value for "${columnName}": ${foundValue} → ${parsedValue}`);
+          } else {
+            console.log(`Could not parse Excel value for "${columnName}": ${foundValue}, using generated value`);
+            value = generateGermanBalanceSheetValue(mapping.excelColumn, inferredDataType);
+          }
+        } else {
+          console.log(`No real value found for "${columnName}", using generated value`);
+          value = generateGermanBalanceSheetValue(mapping.excelColumn, inferredDataType);
         }
       } else {
+        console.log(`No Excel dataset provided, using generated value for "${mapping.excelColumn}"`);
         // Generate realistic values based on German balance sheet context
         value = generateGermanBalanceSheetValue(mapping.excelColumn, inferredDataType);
       }
 
-      // Ensure ALL values are numeric for XBRL (German balance sheet context)
+      // Parse any remaining string values using international number parser
       if (typeof value === 'string') {
-        // Try to parse numeric value from string
-        const cleanedValue = value.replace(/[^\d.-]/g, '');
-        const numericValue = parseFloat(cleanedValue);
-        
-        if (isNaN(numericValue) || value.toLowerCase().includes('sample') || value.toLowerCase().includes('n/a')) {
-          // Fallback to realistic German balance sheet value
+        const parsedValue = parseInternationalNumber(value);
+        if (parsedValue !== null) {
+          value = parsedValue;
+          console.log(`Secondary parsing of "${value}" → ${parsedValue}`);
+        } else if (value.toLowerCase().includes('sample') || value.toLowerCase().includes('n/a') || value.toLowerCase().includes('placeholder')) {
+          // Only fall back to generated values for obvious placeholders
+          console.log(`Detected placeholder value "${value}", using generated value`);
           value = generateGermanBalanceSheetValue(mapping.excelColumn, inferredDataType);
         } else {
-          value = numericValue;
+          // For non-numeric strings, keep as-is (might be text fields)
+          console.log(`Keeping non-numeric string value: "${value}"`);
         }
       }
       
-      // Final safety check - ALWAYS ensure numeric value for XBRL
-      if (typeof value !== 'number') {
+      // Final safety check for monetary fields only - ensure numeric value for XBRL facts
+      if (typeof value !== 'number' && (inferredDataType === 'monetary' || inferredDataType === 'decimal' || inferredDataType === 'shares')) {
+        console.log(`Converting non-numeric value to number for ${inferredDataType} field: ${value}`);
         if (inferredDataType === 'monetary') {
-          value = 100000;
+          value = 100000; // Minimal fallback
         } else if (inferredDataType === 'shares') {
           value = 1000;
         } else {

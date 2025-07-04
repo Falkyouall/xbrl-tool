@@ -67,6 +67,7 @@ export const parseExcelFile = async (file: File): Promise<ExcelColumn[]> => {
     const columns: ExcelColumn[] = headers.map((header, index) => {
       const columnData = jsonData.slice(1).map(row => (row as any[])[index]).filter(val => val != null);
       const sampleValues = columnData.slice(0, 5); // First 5 non-null values
+      const allValues = columnData; // All non-null values for this column
 
       // Determine data type based on sample values
       let type: ExcelColumn['type'] = 'string';
@@ -85,13 +86,91 @@ export const parseExcelFile = async (file: File): Promise<ExcelColumn[]> => {
         name: header?.toString() || `Spalte_${index + 1}`,
         index,
         type,
-        sampleValues
+        sampleValues,
+        allValues // Store all values for XBRL generation
       };
     });
 
     return columns.filter(col => col.name.trim() !== '');
   } catch (error) {
     console.error('Error parsing Excel file:', error);
+    throw new Error(`Fehler beim Lesen der Excel-Datei: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+  }
+};
+
+// Extract complete Excel dataset for XBRL generation
+export const parseExcelFileForXBRL = async (file: File): Promise<{ columns: ExcelColumn[], dataset: any[] }> => {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+    // Get the first worksheet
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+
+    if (!worksheet) {
+      throw new Error('Keine Arbeitsblätter in der Excel-Datei gefunden.');
+    }
+
+    // Convert to JSON to get complete dataset
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+    if (!jsonData || jsonData.length === 0) {
+      throw new Error('Die Excel-Datei enthält keine Daten.');
+    }
+
+    // Get headers from first row
+    const headers = jsonData[0] as string[];
+
+    if (!headers || headers.length === 0) {
+      throw new Error('Keine Spaltenüberschriften gefunden.');
+    }
+
+    // Create dataset with column names as keys
+    const dataset = jsonData.slice(1).map(row => {
+      const rowData: any = {};
+      headers.forEach((header, index) => {
+        if (header && header.trim()) {
+          rowData[header.trim()] = (row as any[])[index];
+        }
+      });
+      return rowData;
+    }).filter(row => Object.values(row).some(val => val != null)); // Remove empty rows
+
+    // Analyze columns and their data types
+    const columns: ExcelColumn[] = headers.map((header, index) => {
+      const columnData = jsonData.slice(1).map(row => (row as any[])[index]).filter(val => val != null);
+      const sampleValues = columnData.slice(0, 5); // First 5 non-null values
+      const allValues = columnData; // All non-null values for this column
+
+      // Determine data type based on sample values
+      let type: ExcelColumn['type'] = 'string';
+      if (sampleValues.length > 0) {
+        const firstValue = sampleValues[0];
+        if (typeof firstValue === 'number') {
+          type = 'number';
+        } else if (firstValue instanceof Date) {
+          type = 'date';
+        } else if (typeof firstValue === 'boolean') {
+          type = 'boolean';
+        }
+      }
+
+      return {
+        name: header?.toString() || `Spalte_${index + 1}`,
+        index,
+        type,
+        sampleValues,
+        allValues // Store all values for XBRL generation
+      };
+    });
+
+    return {
+      columns: columns.filter(col => col.name.trim() !== ''),
+      dataset
+    };
+  } catch (error) {
+    console.error('Error parsing Excel file for XBRL:', error);
     throw new Error(`Fehler beim Lesen der Excel-Datei: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
   }
 };
@@ -154,33 +233,35 @@ ${columns.map((col, index) => `${index + 1}. "${col}"`).join('\n')}
 ${availableTagsSection}
 
 **Anweisungen:**
-1. Ordnen Sie JEDE EINZELNE Excel-Spalte dem passendsten XBRL-Tag zu - keine Spalte auslassen!
-2. Berücksichtigen Sie den spezifischen Kontext (${recipient}, ${regulation}, ${perspective})
-3. Geben Sie für jede Zuordnung eine Konfidenz zwischen 0 und 1 an
-4. Fügen Sie kurze Beschreibungen hinzu, warum diese Zuordnung sinnvoll ist
-5. ${regulation === 'HGB' ? 'Verwenden Sie ausschließlich DE-GAAP Tags (de-gaap-ci:*) für die E-Bilanz' : 'Verwenden Sie etablierte XBRL-Taxonomien (z.B. IFRS, GAAP, lokale Standards)'}
-6. Verwenden Sie spezifische Tags für jeden Bilanzposten - NICHT nur generische Tags wie "bs.ass"
-7. Für Bilanzposten verwenden Sie die Hierarchie: Summen → Hauptgruppen → Untergruppen → Einzelposten
-8. Alle Werte müssen dataType "monetary" haben für Bilanzposten
-9. WICHTIG: Erstellen Sie für ALLE Excel-Spalten ein Mapping - keine Spalte überspringen!
+1. **KRITISCH**: Ordnen Sie JEDE EINZELNE Excel-Spalte dem passendsten XBRL-Tag zu - keine Spalte auslassen!
+2. **VOLLSTÄNDIGKEIT**: Anzahl Mappings MUSS genau der Anzahl Excel-Spalten entsprechen (${columns.length} Spalten = ${columns.length} Mappings)
+3. Berücksichtigen Sie den spezifischen Kontext (${recipient}, ${regulation}, ${perspective})
+4. Geben Sie für jede Zuordnung eine realistische Konfidenz zwischen 0.7 und 1.0 an
+5. Fügen Sie kurze Beschreibungen hinzu, warum diese Zuordnung sinnvoll ist
+6. ${regulation === 'HGB' ? 'Verwenden Sie ausschließlich DE-GAAP Tags (de-gaap-ci:*) für die E-Bilanz' : 'Verwenden Sie etablierte XBRL-Taxonomien (z.B. IFRS, GAAP, lokale Standards)'}
+7. Verwenden Sie spezifische Tags für jeden Bilanzposten - NICHT nur generische Tags wie "bs.ass"
+8. Für Bilanzposten verwenden Sie die Hierarchie: Summen → Hauptgruppen → Untergruppen → Einzelposten
+9. Alle Werte müssen dataType "monetary" haben für Bilanzposten (außer Textfelder oder Anteile)
+10. **VALIDATION**: Überprüfen Sie am Ende, dass Sie exakt ${columns.length} Mappings erstellt haben!
 
-**Mapping-Beispiele für deutsche Bilanz:**
+**Wichtige Strukturhierarchie für dynamisches Mapping:**
 ${regulation === 'HGB' ? `
-- "Summe Aktiva" → "de-gaap-ci:bs.ass"
-- "Anlagevermögen" → "de-gaap-ci:bs.ass.fixAss"  
-- "Sachanlagen" → "de-gaap-ci:bs.ass.fixAss.tan"
-- "Umlaufvermögen" → "de-gaap-ci:bs.ass.currAss"
-- "Kassenbestand" → "de-gaap-ci:bs.ass.currAss.cashEquiv.cash"
-- "Bankguthaben" → "de-gaap-ci:bs.ass.currAss.cashEquiv.bank"
-- "Forderungen aus Lieferungen und Leistungen" → "de-gaap-ci:bs.ass.currAss.receiv.trade"
-- "Vorräte" → "de-gaap-ci:bs.ass.currAss.inventory"
-- "Summe Passiva" → "de-gaap-ci:bs.eqLiab"
-- "Eigenkapital" → "de-gaap-ci:bs.eqLiab.equity"
-- "Gezeichnetes Kapital" → "de-gaap-ci:bs.eqLiab.equity.subscribed"
-- "Gewinnrücklagen" → "de-gaap-ci:bs.eqLiab.equity.retainedEarnings"
-- "Verbindlichkeiten" → "de-gaap-ci:bs.eqLiab.liab"
-- "Verbindlichkeiten gegenüber Kreditinstituten" → "de-gaap-ci:bs.eqLiab.liab.bank"
-- "Rückstellungen" → "de-gaap-ci:bs.eqLiab.provisions"
+**Aktiva (Assets):**
+- Anlagevermögen: de-gaap-ci:bs.ass.fixAss.*
+- Umlaufvermögen: de-gaap-ci:bs.ass.currAss.*
+- Summen: de-gaap-ci:bs.ass (Gesamtaktiva)
+
+**Passiva (Equity & Liabilities):**
+- Eigenkapital: de-gaap-ci:bs.eqLiab.equity.*
+- Verbindlichkeiten: de-gaap-ci:bs.eqLiab.liab.*
+- Rückstellungen: de-gaap-ci:bs.eqLiab.provisions.*
+- Summen: de-gaap-ci:bs.eqLiab (Gesamtpassiva)
+
+**Intelligente Zuordnung:**
+Analysieren Sie die Excel-Spaltennamen und ordnen Sie sie dynamisch den passendsten DE-GAAP Tags zu, basierend auf:
+1. Semantischer Bedeutung des Spaltennamens
+2. Position in der Bilanzstruktur (Aktiva vs. Passiva)
+3. Detailgrad (Summe, Hauptgruppe, Untergruppe, Einzelposten)
 ` : ''}
 
 **Antwortformat (JSON):**
@@ -305,45 +386,31 @@ export const analyzeColumnDataTypes = async (
       organization: process.env.OPENAI_ORGANISATION
     });
 
-    // Create analysis prompt for data type detection
-    const analysisPrompt = `
-Analyze these Excel column headers for financial reporting (${formData.regulation}, ${formData.perspective}) and determine their data types.
+    // Create simplified analysis prompt for data type detection
+    const analysisPrompt = `Analyze Excel columns for ${formData.regulation} ${formData.perspective} and classify data types.
 
-**Context:**
-- Regulation: ${formData.regulation}
-- Report Type: ${formData.perspective}
-- Institution: ${formData.recipient}
+**Columns:**
+${columns.map((col, idx) => `${idx + 1}. "${col.name}"`).join('\n')}
 
-**Columns to analyze:**
-${columns.map((col, idx) => `${idx + 1}. "${col.name}" (sample values: ${col.sampleValues?.slice(0, 3).join(', ') || 'N/A'})`).join('\n')}
+**Classify as:**
+- monetary: Currency amounts → unitRef="u1", decimals="0"
+- decimal: Percentages/ratios → unitRef="pure", decimals="2"
+- shares: Share counts → unitRef="shares", decimals="0" 
+- string: Text values → no unitRef
+- date: Date values → no unitRef
+- boolean: True/false → no unitRef
 
-**Data Types to classify:**
-- "monetary": Currency amounts (€, $, etc.) - requires unitRef="u1", decimals="0"
-- "decimal": Percentages, ratios, factors - requires unitRef="pure", decimals="2" 
-- "shares": Number of shares, units, counts - requires unitRef="shares", decimals="0"
-- "boolean": True/false, yes/no values - no unitRef needed
-- "date": Date values - no unitRef needed
-- "string": Text values - no unitRef needed
-
-For each column, provide:
-1. Most likely dataType
-2. hasNumericIndicator (true if represents numeric value for XBRL)
-3. confidence (0.0-1.0)
-4. reasoning (brief explanation)
-5. suggestedUnit (u1/pure/shares if numeric)
-6. suggestedDecimals (string: "0", "2", etc. if numeric)
-
-**Response format (JSON only):**
+**JSON format:**
 {
   "analyses": [
     {
       "columnName": "Column Name",
-      "dataType": "monetary|decimal|shares|boolean|date|string",
-      "hasNumericIndicator": true|false,
-      "confidence": 0.95,
-      "reasoning": "Brief explanation",
-      "suggestedUnit": "u1|pure|shares",
-      "suggestedDecimals": "0|2"
+      "dataType": "monetary",
+      "hasNumericIndicator": true,
+      "confidence": 0.9,
+      "reasoning": "Currency amount",
+      "suggestedUnit": "u1",
+      "suggestedDecimals": "0"
     }
   ]
 }
@@ -363,7 +430,7 @@ Respond with valid JSON only.`;
         }
       ],
       temperature: 0.1,
-      max_tokens: 2000,
+      max_tokens: 3000,
       response_format: { type: 'json_object' }
     });
 
@@ -373,7 +440,34 @@ Respond with valid JSON only.`;
       throw new Error('Keine Antwort von OpenAI für Datentyp-Analyse erhalten.');
     }
 
-    const analysisResponse: { analyses: DataTypeAnalysis[] } = JSON.parse(responseContent);
+    console.log('OpenAI data type analysis response length:', responseContent.length);
+    console.log('OpenAI data type analysis response preview:', responseContent.substring(0, 500) + '...');
+
+    let analysisResponse: { analyses: DataTypeAnalysis[] };
+    try {
+      analysisResponse = JSON.parse(responseContent);
+    } catch (jsonError) {
+      console.error('JSON parsing failed for data type analysis:', jsonError);
+      console.error('Response content:', responseContent);
+      
+      // Try to fix common JSON issues
+      let fixedContent = responseContent;
+      
+      // Remove any trailing incomplete content after last }
+      const lastBraceIndex = fixedContent.lastIndexOf('}');
+      if (lastBraceIndex > 0) {
+        fixedContent = fixedContent.substring(0, lastBraceIndex + 1);
+      }
+      
+      // Try parsing the fixed content
+      try {
+        analysisResponse = JSON.parse(fixedContent);
+        console.log('JSON parsing succeeded after fixing');
+      } catch (secondError) {
+        console.error('JSON parsing failed even after fixing:', secondError);
+        throw new Error(`Ungültige JSON-Antwort für Datentyp-Analyse: ${jsonError instanceof Error ? jsonError.message : 'JSON Parsing Error'}`);
+      }
+    }
 
     if (!analysisResponse.analyses || !Array.isArray(analysisResponse.analyses)) {
       throw new Error('Ungültige Antwortstruktur für Datentyp-Analyse.');
@@ -422,18 +516,40 @@ Respond with valid JSON only.`;
   } catch (error) {
     console.error('Error analyzing column data types:', error);
     
-    // Return columns with default analysis if OpenAI fails
-    return columns.map(column => ({
-      ...column,
-      dataTypeAnalysis: {
-        dataType: 'monetary' as const,
-        hasNumericIndicator: true,
-        confidence: 0.3,
-        reasoning: 'Fallback due to analysis error',
-        suggestedUnit: 'u1' as const,
-        suggestedDecimals: '0'
+    // Return columns with intelligent fallback analysis if OpenAI fails
+    return columns.map(column => {
+      const columnName = column.name.toLowerCase();
+      let dataType: DataTypeAnalysis['dataType'] = 'monetary';
+      let suggestedUnit: DataTypeAnalysis['suggestedUnit'] = 'u1';
+      let suggestedDecimals = '0';
+      
+      // Simple fallback based on column name keywords
+      if (columnName.includes('date') || columnName.includes('datum')) {
+        dataType = 'date';
+        suggestedUnit = undefined;
+        suggestedDecimals = undefined;
+      } else if (columnName.includes('percent') || columnName.includes('ratio') || columnName.includes('%')) {
+        dataType = 'decimal';
+        suggestedUnit = 'pure';
+        suggestedDecimals = '2';
+      } else if (columnName.includes('share') || columnName.includes('anteil') || columnName.includes('stück')) {
+        dataType = 'shares';
+        suggestedUnit = 'shares';
+        suggestedDecimals = '0';
       }
-    }));
+      
+      return {
+        ...column,
+        dataTypeAnalysis: {
+          dataType,
+          hasNumericIndicator: dataType !== 'string' && dataType !== 'date' && dataType !== 'boolean',
+          confidence: 0.5,
+          reasoning: 'Fallback due to analysis error',
+          suggestedUnit,
+          suggestedDecimals
+        }
+      };
+    });
   }
 };
 
@@ -544,6 +660,77 @@ export const debounce = <T extends (...args: any[]) => any>(
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
   };
+};
+
+// Universal number format parsing utility (language-independent)
+export const parseInternationalNumber = (value: any): number | null => {
+  if (typeof value === 'number') return value;
+  if (typeof value !== 'string' && value != null) {
+    // Try to convert to string first
+    value = value.toString();
+  }
+  if (typeof value !== 'string') return null;
+  
+  // Remove currency symbols, spaces, and other non-numeric characters
+  let cleanValue = value.toString()
+    .replace(/[€$£¥₹₽¢]/g, '') // Remove common currency symbols
+    .replace(/[^\d.,\-]/g, '') // Keep only digits, comma, dot, and minus
+    .trim();
+  
+  if (!cleanValue) return null;
+  
+  // Handle different international number formats:
+  // German/European: 1.500.000,50 or 1 500 000,50
+  // US/UK: 1,500,000.50
+  // Simple: 1500000.50 or 1500000,50
+  
+  const commaCount = (cleanValue.match(/,/g) || []).length;
+  const dotCount = (cleanValue.match(/\./g) || []).length;
+  
+  if (commaCount === 0 && dotCount === 0) {
+    // Simple integer
+    return parseInt(cleanValue, 10);
+  }
+  
+  if (commaCount > 1 || dotCount > 1) {
+    // Multiple separators - determine which is decimal separator
+    const lastComma = cleanValue.lastIndexOf(',');
+    const lastDot = cleanValue.lastIndexOf('.');
+    
+    if (lastComma > lastDot) {
+      // Comma is decimal separator (European format)
+      cleanValue = cleanValue.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Dot is decimal separator (US format) 
+      cleanValue = cleanValue.replace(/,/g, '');
+    }
+  } else if (commaCount === 1 && dotCount === 1) {
+    // Both comma and dot present - determine format
+    const commaPos = cleanValue.indexOf(',');
+    const dotPos = cleanValue.indexOf('.');
+    
+    if (commaPos < dotPos) {
+      // US format: 1,500.50
+      cleanValue = cleanValue.replace(',', '');
+    } else {
+      // European format: 1.500,50
+      cleanValue = cleanValue.replace('.', '').replace(',', '.');
+    }
+  } else if (commaCount === 1) {
+    // Only comma - could be thousands separator or decimal
+    const parts = cleanValue.split(',');
+    if (parts[1] && parts[1].length <= 2) {
+      // Likely decimal separator
+      cleanValue = cleanValue.replace(',', '.');
+    } else {
+      // Likely thousands separator
+      cleanValue = cleanValue.replace(',', '');
+    }
+  }
+  // If only dot, assume it's correct (US format or decimal)
+  
+  const parsed = parseFloat(cleanValue);
+  return isNaN(parsed) ? null : parsed;
 };
 
 // Generate unique IDs

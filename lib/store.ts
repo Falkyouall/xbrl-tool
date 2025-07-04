@@ -19,6 +19,10 @@ interface XBRLStore {
   originalColumns: ExcelColumn[] | null;
   setOriginalColumns: (columns: ExcelColumn[]) => void;
   
+  // Excel dataset state
+  excelDataset: any[] | null;
+  setExcelDataset: (dataset: any[]) => void;
+  
   // File info state
   fileInfo: FileInfo | null;
   setFileInfo: (info: FileInfo) => void;
@@ -48,6 +52,7 @@ export const useXBRLStore = create<XBRLStore>()(
       perspective: ''
     },
     originalColumns: null,
+    excelDataset: null,
     fileInfo: null,
     mappingResult: null,
     isProcessing: false,
@@ -61,6 +66,9 @@ export const useXBRLStore = create<XBRLStore>()(
 
     // Excel columns actions
     setOriginalColumns: (columns) => set({ originalColumns: columns }),
+
+    // Excel dataset actions
+    setExcelDataset: (dataset) => set({ excelDataset: dataset }),
 
     // File info actions
     setFileInfo: (info) => set({ fileInfo: info }),
@@ -80,6 +88,7 @@ export const useXBRLStore = create<XBRLStore>()(
         perspective: ''
       },
       originalColumns: null,
+      excelDataset: null,
       fileInfo: null,
       mappingResult: null,
       isProcessing: false,

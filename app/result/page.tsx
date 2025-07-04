@@ -35,7 +35,7 @@ export default function ResultPage() {
   const { formData, setFormData } = useFormData();
   const { originalColumns, fileInfo, setFileInfo } = useFileState();
   const { mappingResult, setMappingResult, canRegenerate } = useMappingState();
-  const { clearAll } = useXBRLStore();
+  const { clearAll, excelDataset } = useXBRLStore();
   
   // Local state for UI
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -163,14 +163,16 @@ export default function ResultPage() {
     setError('');
 
     try {
-      // Call server action to generate XBRL
+      // Call server action to generate XBRL with real Excel data
       const result = await generateXBRLDocument(
         mappingResult,
         formData,
         {
           entityId: `ENTITY_${Date.now()}`,
           reportingDate: new Date().toISOString().split('T')[0],
-          currency: 'EUR'
+          currency: 'EUR',
+          excelDataset: excelDataset || [],
+          analyzedColumns: originalColumns || []
         }
       );
 
