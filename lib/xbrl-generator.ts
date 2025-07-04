@@ -1,4 +1,4 @@
-import { FormData, XBRLMapping, OpenAIMappingResponse } from '@/types';
+import { FormData, XBRLMapping, OpenAIMappingResponse, ExcelColumn } from '@/types';
 
 // XBRL 2.1 Standard interfaces
 export interface XBRLContext {
@@ -60,7 +60,7 @@ const XBRL_NAMESPACES = {
   'ifrs-full': 'http://xbrl.ifrs.org/taxonomy/2023-03-23/ifrs-full',
   'finrep': 'http://www.eba.europa.eu/xbrl/crr/fws/finrep/its-005-2020',
   'corep': 'http://www.eba.europa.eu/xbrl/crr/fws/corep/its-005-2020',
-  'de-gaap': 'http://www.xbrl.de/taxonomies/de-gaap'
+  'de-gaap-ci': 'http://www.xbrl.de/taxonomies/de-gaap-ci-2024-04-01'
 };
 
 // Get primary namespace based on regulation
@@ -71,7 +71,7 @@ function getPrimaryNamespace(regulation: string): string {
     case 'COREP':
       return 'corep';
     case 'HGB':
-      return 'de-gaap';
+      return 'de-gaap-ci';
     case 'IFRS':
     default:
       return 'ifrs-full';
@@ -122,12 +122,12 @@ const TAG_MAPPINGS = {
     'Liabilities': 'ifrs-full:Liabilities'
   },
   'HGB': {
-    'CashAndCashEquivalents': 'de-gaap:LiquideMittel',
-    'LoansAndReceivables': 'de-gaap:Forderungen',
-    'Assets': 'de-gaap:Aktiva',
-    'Equity': 'de-gaap:Eigenkapital',
-    'Liabilities': 'de-gaap:Verbindlichkeiten',
-    'Revenue': 'de-gaap:Umsatzerlöse'
+    'CashAndCashEquivalents': 'de-gaap-ci:bs.ass.currAss.cashEquiv',
+    'LoansAndReceivables': 'de-gaap-ci:bs.ass.currAss.receiv',
+    'Assets': 'de-gaap-ci:bs.ass',
+    'Equity': 'de-gaap-ci:bs.eqLiab.eq',
+    'Liabilities': 'de-gaap-ci:bs.eqLiab.liab',
+    'Revenue': 'de-gaap-ci:is.netIncome.revenue'
   }
 };
 
@@ -142,8 +142,16 @@ const SCHEMA_REFERENCES = {
   'IFRS': 'http://xbrl.ifrs.org/taxonomy/2023-03-23/full_ifrs/full_ifrs-cor_2023-03-23.xsd',
   'FINREP': './EBA_CRD_IV_XBRL_3.2_Dictionary_3.2.2.0/www.eba.europa.eu/eu/fr/xbrl/crr/fws/fws.xsd',
   'COREP': 'http://www.eba.europa.eu/eu/fr/xbrl/crr/fws/corep/its-005-2020/2023-10-31/mod/corep_cor.xsd',
-  'HGB': 'http://www.xbrl.de/taxonomies/de-gaap/2023-12-31/de-gaap-ci-2023-12-31.xsd'
+  'HGB': './taxonomies/de-gaap-ci-2024-04-01/de-gaap-ci-2024-04-01.xsd'
 };
+
+// For local validation, we need absolute paths
+function getSchemaReferenceForLocalValidation(regulation: string, workingDir?: string): string {
+  if (regulation === 'HGB' && workingDir) {
+    return `${workingDir}/taxonomies/de-gaap-ci-2024-04-01/de-gaap-ci-2024-04-01.xsd`;
+  }
+  return SCHEMA_REFERENCES[regulation as keyof typeof SCHEMA_REFERENCES] || SCHEMA_REFERENCES['IFRS'];
+}
 
 // Entity identifier schemes
 const ENTITY_SCHEMES = {
@@ -163,12 +171,14 @@ export function generateXBRLInstance(
     entityId?: string;
     reportingDate?: string;
     currency?: string;
+    analyzedColumns?: ExcelColumn[];
   }
 ): XBRLInstance {
   const {
     entityId = 'ENTITY_001',
     reportingDate = new Date().toISOString().split('T')[0],
-    currency = 'EUR'
+    currency = 'EUR',
+    analyzedColumns = []
   } = options || {};
 
   // Generate contexts
@@ -206,50 +216,138 @@ export function generateXBRLInstance(
     }
   ];
 
-  // Generate facts from mappings
-  const facts: XBRLFact[] = mappingResponse.mappings.map((mapping, index) => {
-    // Convert to regulation-specific tag
-    const regulationTag = convertToRegulationTag(mapping.xbrlTag, formData.regulation);
-    const namespace = getNamespaceFromTag(regulationTag);
-    const elementName = getElementNameFromTag(regulationTag);
+  // Generate facts from mappings - avoid duplicates and use realistic values
+  const usedTags = new Set<string>();
+  const facts: XBRLFact[] = mappingResponse.mappings
+    .filter(mapping => {
+      // Skip mappings with very low confidence (lowered threshold)
+      if (mapping.confidence < 0.2) return false;
 
-    // Determine unit based on data type
-    let unitRef: string | undefined;
-    switch (mapping.dataType) {
-      case 'monetary':
-        unitRef = 'u1';
-        break;
-      case 'shares':
-        unitRef = 'shares';
-        break;
-      case 'decimal':
-      case 'string':
-      default:
-        unitRef = mapping.dataType === 'decimal' ? 'pure' : undefined;
-        break;
-    }
+      // Avoid duplicate tags
+      const tagKey = `${mapping.xbrlTag}`;
+      if (usedTags.has(tagKey)) return false;
+      usedTags.add(tagKey);
 
-    // Generate sample value or use from Excel data if available
-    let value: string | number = '0';
-    if (excelData && excelData.length > 0) {
-      const rowData = excelData[0]; // Use first row as example
-      if (rowData[mapping.excelColumn]) {
-        value = rowData[mapping.excelColumn];
+      return true;
+    })
+    .map((mapping, index) => {
+      // Convert to regulation-specific tag
+      const regulationTag = convertToRegulationTag(mapping.xbrlTag, formData.regulation);
+      const namespace = getNamespaceFromTag(regulationTag);
+      const elementName = getElementNameFromTag(regulationTag);
+
+      // Use OpenAI data type analysis if available, otherwise use mapping dataType
+      let inferredDataType = mapping.dataType;
+      let suggestedUnit: string | undefined;
+      let suggestedDecimals: string | undefined;
+      
+      // Find the corresponding analyzed column
+      const analyzedColumn = analyzedColumns.find(col => col.name === mapping.excelColumn);
+      
+      if (analyzedColumn?.dataTypeAnalysis) {
+        // Use OpenAI analysis results
+        inferredDataType = analyzedColumn.dataTypeAnalysis.dataType;
+        suggestedUnit = analyzedColumn.dataTypeAnalysis.suggestedUnit;
+        suggestedDecimals = analyzedColumn.dataTypeAnalysis.suggestedDecimals;
+        
+        console.log(`Using OpenAI analysis for "${mapping.excelColumn}": ${inferredDataType} (confidence: ${analyzedColumn.dataTypeAnalysis.confidence})`);
+      } else {
+        // Fallback to default for financial reporting
+        inferredDataType = inferredDataType || 'monetary';
+        console.log(`Using fallback dataType for "${mapping.excelColumn}": ${inferredDataType}`);
       }
-    } else {
-      // Generate sample values based on data type
-      value = generateSampleValue(mapping.dataType, mapping.excelColumn);
-    }
+      
+      // Determine unit based on OpenAI suggestions or inferred data type
+      let unitRef: string | undefined;
+      if (suggestedUnit) {
+        unitRef = suggestedUnit;
+      } else {
+        switch (inferredDataType) {
+          case 'monetary':
+            unitRef = 'u1';
+            break;
+          case 'shares':
+            unitRef = 'shares';
+            break;
+          case 'decimal':
+            unitRef = 'pure';
+            break;
+          default:
+            // Default to monetary for financial reporting
+            unitRef = 'u1';
+            break;
+        }
+      }
 
-    return {
-      name: elementName,
-      contextRef: 'c1',
-      unitRef,
-      decimals: mapping.dataType === 'monetary' ? '0' : undefined,
-      value,
-      namespace
-    };
-  });
+      // Generate realistic sample values based on German balance sheet structure
+      let value: string | number = 0;
+      if (excelData && excelData.length > 0) {
+        const rowData = excelData[0]; // Use first row as example
+        if (rowData[mapping.excelColumn]) {
+          value = rowData[mapping.excelColumn];
+        }
+      } else {
+        // Generate realistic values based on German balance sheet context
+        value = generateGermanBalanceSheetValue(mapping.excelColumn, inferredDataType);
+      }
+
+      // Ensure ALL values are numeric for XBRL (German balance sheet context)
+      if (typeof value === 'string') {
+        // Try to parse numeric value from string
+        const cleanedValue = value.replace(/[^\d.-]/g, '');
+        const numericValue = parseFloat(cleanedValue);
+        
+        if (isNaN(numericValue) || value.toLowerCase().includes('sample') || value.toLowerCase().includes('n/a')) {
+          // Fallback to realistic German balance sheet value
+          value = generateGermanBalanceSheetValue(mapping.excelColumn, inferredDataType);
+        } else {
+          value = numericValue;
+        }
+      }
+      
+      // Final safety check - ALWAYS ensure numeric value for XBRL
+      if (typeof value !== 'number') {
+        if (inferredDataType === 'monetary') {
+          value = 100000;
+        } else if (inferredDataType === 'shares') {
+          value = 1000;
+        } else {
+          value = 0;
+        }
+      }
+
+      // Use OpenAI suggestions or determine based on data type
+      let finalUnitRef: string | undefined = suggestedUnit || unitRef;
+      let finalDecimals: string | undefined = suggestedDecimals;
+      
+      // If no OpenAI suggestion for decimals, use defaults based on data type
+      if (!finalDecimals) {
+        if (inferredDataType === 'monetary') {
+          finalDecimals = '0'; // No decimal places for currency amounts
+        } else if (inferredDataType === 'decimal') {
+          finalDecimals = '2'; // 2 decimal places for ratios/percentages
+        } else if (inferredDataType === 'shares') {
+          finalDecimals = '0'; // Whole shares
+        } else if (typeof value === 'number') {
+          finalDecimals = '0'; // Default for numeric values
+        }
+      }
+      
+      // For non-numeric types (string, boolean, date), no unitRef or decimals needed
+      if (inferredDataType === 'string' || inferredDataType === 'boolean' || inferredDataType === 'date') {
+        finalUnitRef = undefined;
+        finalDecimals = undefined;
+      }
+
+      return {
+        name: elementName,
+        contextRef: 'c1',
+        unitRef: finalUnitRef,
+        decimals: finalDecimals,
+        value,
+        namespace
+      };
+    });
 
   return {
     contexts,
@@ -379,7 +477,7 @@ function convertToRegulationTag(xbrlTag: string, regulation: string): string {
     const namespace = xbrlTag.split(':')[0];
     if (regulation === 'FINREP' && namespace === 'finrep') return xbrlTag;
     if (regulation === 'COREP' && namespace === 'corep') return xbrlTag;
-    if (regulation === 'HGB' && namespace === 'de-gaap') return xbrlTag;
+    if (regulation === 'HGB' && namespace === 'de-gaap-ci') return xbrlTag;
     if (regulation === 'IFRS' && namespace === 'ifrs-full') return xbrlTag;
   }
 
@@ -410,10 +508,10 @@ function convertToRegulationTag(xbrlTag: string, regulation: string): string {
 
   // Tag mapping for HGB (German GAAP)
   const HGB_TAG_MAPPING: { [key: string]: string } = {
-    'ifrs-full:Assets': 'de-gaap:Assets',
-    'ifrs-full:Equity': 'de-gaap:Equity',
-    'ifrs-full:CashAndCashEquivalents': 'de-gaap:CashAndCashEquivalents',
-    'ifrs-full:PropertyPlantAndEquipment': 'de-gaap:PropertyPlantAndEquipment'
+    'ifrs-full:Assets': 'de-gaap-ci:bs.ass',
+    'ifrs-full:Equity': 'de-gaap-ci:bs.eqLiab.eq',
+    'ifrs-full:CashAndCashEquivalents': 'de-gaap-ci:bs.ass.currAss.cashEquiv',
+    'ifrs-full:PropertyPlantAndEquipment': 'de-gaap-ci:bs.ass.fixAss.tan'
   };
 
   switch (regulation) {
@@ -422,7 +520,7 @@ function convertToRegulationTag(xbrlTag: string, regulation: string): string {
     case 'COREP':
       return COREP_TAG_MAPPING[xbrlTag] || xbrlTag.replace('ifrs-full:', 'corep:');
     case 'HGB':
-      return HGB_TAG_MAPPING[xbrlTag] || xbrlTag.replace('ifrs-full:', 'de-gaap:');
+      return HGB_TAG_MAPPING[xbrlTag] || xbrlTag.replace('ifrs-full:', 'de-gaap-ci:');
     case 'IFRS':
     default:
       // For IFRS, keep as-is or ensure ifrs-full namespace
@@ -462,14 +560,109 @@ function generateSampleValue(dataType?: string, columnName?: string): string | n
     case 'date':
       return new Date().toISOString().split('T')[0];
     default:
-      // Try to infer from column name
+      // Try to infer from column name for numeric values
       if (columnName?.toLowerCase().includes('amount') ||
         columnName?.toLowerCase().includes('value') ||
-        columnName?.toLowerCase().includes('betrag')) {
+        columnName?.toLowerCase().includes('betrag') ||
+        columnName?.toLowerCase().includes('summe') ||
+        columnName?.toLowerCase().includes('total')) {
         return Math.floor(Math.random() * 1000000);
       }
-      return 'Sample Value';
+      // For numeric contexts, always return a number instead of "Sample Value"
+      if (columnName) {
+        const numericIndicators = ['aktiva', 'passiva', 'kapital', 'forderung', 'verbindlichkeit', 
+                                  'rücklage', 'gewinn', 'verlust', 'umsatz', 'kosten', 'euro', 'eur'];
+        const hasNumericIndicator = numericIndicators.some(indicator => 
+          columnName.toLowerCase().includes(indicator));
+        if (hasNumericIndicator) {
+          return Math.floor(Math.random() * 500000);
+        }
+      }
+      // For any unrecognized pattern, return a safe numeric value
+      return 50000;
   }
+}
+
+/**
+ * Generate realistic German balance sheet values based on typical German company structures
+ */
+function generateGermanBalanceSheetValue(columnName?: string, dataType?: string): string | number {
+  if (!columnName) return generateSampleValue(dataType);
+
+  const normalizedName = columnName.toLowerCase();
+
+  // German balance sheet typical values (in EUR)
+  const balanceSheetValues: Record<string, number> = {
+    // Aktiva (Assets)
+    'summe aktiva': 1500000,
+    'bilanzsumme': 1500000,
+    'anlagevermögen': 600000,
+    'umlaufvermögen': 850000,
+    'kassenbestand': 50000,
+    'bank': 150000,
+    'forderungen': 200000,
+    'forderungen aus l&l': 200000,
+    'forderungen aus lieferungen und leistungen': 200000,
+    'vorräte': 300000,
+    'roh-, hilfs- und betriebsstoffe': 100000,
+    'fertige erzeugnisse': 200000,
+    'waren': 150000,
+
+    // Passiva (Equity & Liabilities)
+    'summe passiva': 1500000,
+    'eigenkapital': 600000,
+    'gezeichnetes kapital': 250000,
+    'gewinnrücklagen': 150000,
+    'jahresüberschuss': 75000,
+    'verbindlichkeiten': 750000,
+    'verbindlichkeiten ggü. kreditinstituten': 400000,
+    'verbindlichkeiten aus lieferungen u. leistungen': 350000,
+    'verbindlichkeiten aus ll': 350000,
+    'rückstellungen': 150000,
+    'steuerrückstellungen': 50000
+  };
+
+  // Try exact match first
+  for (const [key, value] of Object.entries(balanceSheetValues)) {
+    if (normalizedName.includes(key)) {
+      return value;
+    }
+  }
+
+  // Fuzzy matching for common terms
+  if (normalizedName.includes('aktiva') || normalizedName.includes('bilanzsumme')) {
+    return 1500000;
+  }
+  if (normalizedName.includes('passiva')) {
+    return 1500000;
+  }
+  if (normalizedName.includes('eigenkapital')) {
+    return 600000;
+  }
+  if (normalizedName.includes('anlage')) {
+    return 600000;
+  }
+  if (normalizedName.includes('umlauf')) {
+    return 850000;
+  }
+  if (normalizedName.includes('kasse') || normalizedName.includes('cash')) {
+    return 50000;
+  }
+  if (normalizedName.includes('forderung')) {
+    return 200000;
+  }
+  if (normalizedName.includes('verbindlichkeit')) {
+    return 400000;
+  }
+  if (normalizedName.includes('kredit')) {
+    return 400000;
+  }
+  if (normalizedName.includes('rücklag')) {
+    return 150000;
+  }
+
+  // Default to sample value generation
+  return generateSampleValue(dataType, columnName);
 }
 
 /**

@@ -17,6 +17,7 @@ import {
   removeFromSessionStorage,
   formatFileSize
 } from '@/lib/utils';
+import { useXBRLStore, useFormData, useFileState, useMappingState } from '@/lib/store';
 import { regenerateMapping, generateXBRLDocument } from '@/app/actions/mapping';
 import { Download, RefreshCw, CheckCircle, AlertTriangle, Info, FileText } from 'lucide-react';
 
@@ -29,18 +30,20 @@ interface FileInfo {
 
 export default function ResultPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState<FormData>({
-    recipient: '',
-    regulation: '',
-    perspective: ''
-  });
-  const [mappingResult, setMappingResult] = useState<OpenAIMappingResponse | null>(null);
-  const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
+  
+  // Zustand store hooks
+  const { formData, setFormData } = useFormData();
+  const { originalColumns, fileInfo, setFileInfo } = useFileState();
+  const { mappingResult, setMappingResult, canRegenerate } = useMappingState();
+  const { clearAll } = useXBRLStore();
+  
+  // Local state for UI
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [error, setError] = useState<string>('');
   const [showSuccess, setShowSuccess] = useState(true);
+  const [showRegenerateSuccess, setShowRegenerateSuccess] = useState(false);
 
-  // Load data from session storage
+  // Load data from session storage as fallback
   useEffect(() => {
     const savedFormData = loadFromSessionStorage<FormData>('xbrl-form-data', {
       recipient: '',
@@ -57,10 +60,17 @@ export default function ResultPage() {
       return;
     }
 
-    setFormData(savedFormData);
-    setMappingResult(savedMappingResult);
-    setFileInfo(savedFileInfo);
-  }, [router]);
+    // Only set data if Zustand store is empty (fallback to session storage)
+    if (!formData.recipient && !mappingResult && !fileInfo) {
+      setFormData(savedFormData);
+      if (savedMappingResult) {
+        setMappingResult(savedMappingResult);
+      }
+      if (savedFileInfo) {
+        setFileInfo(savedFileInfo);
+      }
+    }
+  }, [router]); // Remove circular dependencies
 
   const handleRegenerate = async () => {
     if (!mappingResult || !fileInfo) return;
@@ -69,10 +79,41 @@ export default function ResultPage() {
     setError('');
 
     try {
-      // For regeneration, we would need the original columns data
-      // In a real implementation, we'd store this in session storage too
-      // For now, we'll show a placeholder message
-      setError('Neu-Generierung erfordert die ursprünglichen Spaltendaten. Bitte laden Sie die Datei erneut hoch.');
+      // Check if we can regenerate using Zustand store
+      if (!canRegenerate() || !originalColumns) {
+        setError('Ursprüngliche Spaltendaten nicht verfügbar. Bitte laden Sie die Datei erneut hoch.');
+        return;
+      }
+
+      // Call regenerate mapping API
+      const result = await regenerateMapping(formData, originalColumns);
+      
+      if (!result.success) {
+        setError(result.error || 'Fehler beim Neu-Generieren der Mappings');
+        return;
+      }
+
+      // Update mapping result in Zustand store
+      if (result.data) {
+        setMappingResult(result.data);
+        saveToSessionStorage('xbrl-mapping-result', result.data);
+      }
+      
+      // Update file info with new processing time
+      if (fileInfo) {
+        const updatedFileInfo = {
+          ...fileInfo,
+          processingTime: result.processingTime,
+          columnsProcessed: result.columnsProcessed
+        };
+        setFileInfo(updatedFileInfo);
+        saveToSessionStorage('xbrl-file-info', updatedFileInfo);
+      }
+      
+      // Show success message
+      setShowRegenerateSuccess(true);
+      setTimeout(() => setShowRegenerateSuccess(false), 5000);
+
     } catch (err) {
       setError(`Fehler beim Neu-Generieren: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`);
     } finally {
@@ -165,10 +206,15 @@ export default function ResultPage() {
   };
 
   const handleStartOver = () => {
-    // Clear all session storage
+    // Clear Zustand store
+    clearAll();
+    
+    // Clear session storage as backup
     removeFromSessionStorage('xbrl-form-data');
     removeFromSessionStorage('xbrl-mapping-result');
     removeFromSessionStorage('xbrl-file-info');
+    removeFromSessionStorage('xbrl-original-columns');
+    
     router.push('/');
   };
 
@@ -227,6 +273,20 @@ export default function ResultPage() {
           <p>
             Ihre Excel-Datei wurde erfolgreich analysiert und {mappingResult.mappings.length}
             XBRL-Mappings wurden generiert. Überprüfen Sie die Ergebnisse unten.
+          </p>
+        </Alert>
+      )}
+
+      {/* Regenerate Success Alert */}
+      {showRegenerateSuccess && (
+        <Alert
+          type="success"
+          title="Mapping erfolgreich neu generiert!"
+          onClose={() => setShowRegenerateSuccess(false)}
+        >
+          <p>
+            Die XBRL-Mappings wurden mit neuen KI-Parametern regeneriert. 
+            Überprüfen Sie die aktualisierten Ergebnisse unten.
           </p>
         </Alert>
       )}

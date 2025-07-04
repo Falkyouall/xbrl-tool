@@ -6,7 +6,8 @@ import {
   OpenAIMappingResponse,
   PromptConfig,
   FormData,
-  ProcessingError
+  ProcessingError,
+  DataTypeAnalysis
 } from '@/types';
 
 // File validation utilities
@@ -95,9 +96,51 @@ export const parseExcelFile = async (file: File): Promise<ExcelColumn[]> => {
   }
 };
 
+// Load GAAP tags for HGB regulation
+async function loadGaapTags(): Promise<{tag: string; label: string}[]> {
+  try {
+    const gaapTags = await import("../src/data/gaap_tags_2024.json").then(m => m.default);
+    return gaapTags;
+  } catch (error) {
+    console.warn('Could not load GAAP tags, falling back to defaults:', error);
+    return [];
+  }
+}
+
 // OpenAI prompt generation
-const generateMappingPrompt = (config: PromptConfig): string => {
+const generateMappingPrompt = async (config: PromptConfig): Promise<string> => {
   const { recipient, regulation, perspective, columns } = config;
+
+  let availableTagsSection = '';
+  
+  // For HGB/E-Bilanz, load and include the GAAP tags
+  if (regulation === 'HGB') {
+    const gaapTags = await loadGaapTags();
+    if (gaapTags.length > 0) {
+      // Filter for relevant balance sheet tags based on perspective
+      let relevantTags = gaapTags;
+      
+      if (perspective === 'Bilanz') {
+        // For balance sheet, focus on bs.ass (assets) and bs.eqLiab (equity & liabilities)
+        relevantTags = gaapTags.filter(tag => 
+          tag.tag.includes('bs.ass') || 
+          tag.tag.includes('bs.eqLiab') ||
+          tag.tag.includes('bs.equity') ||
+          tag.tag === 'de-gaap-ci:bs.ass' ||
+          tag.tag === 'de-gaap-ci:bs.eqLiab'
+        ).slice(0, 150); // Increased limit for balance sheet
+      }
+      
+      availableTagsSection = `
+**Verfügbare DE-GAAP Tags für E-Bilanz (${perspective}):**
+${relevantTags.map(tag => `- ${tag.tag}: ${tag.label}`).join('\n')}
+
+**Wichtig:** Verwenden Sie ausschließlich Tags aus der DE-GAAP Taxonomie (de-gaap-ci:*) für HGB-Meldungen.
+**Bilanz-Struktur:** 
+- Aktiva: de-gaap-ci:bs.ass.* (Anlagevermögen: bs.ass.fixAss.*, Umlaufvermögen: bs.ass.currAss.*)
+- Passiva: de-gaap-ci:bs.eqLiab.* (Eigenkapital: bs.eqLiab.equity.*, Verbindlichkeiten: bs.eqLiab.liab.*)`;
+    }
+  }
 
   return `Sie sind ein Experte für XBRL-Taxonomien und Finanzberichterstattung. Ihre Aufgabe ist es, Excel-Spalten den entsprechenden XBRL-Tags zuzuordnen.
 
@@ -108,24 +151,48 @@ const generateMappingPrompt = (config: PromptConfig): string => {
 
 **Excel-Spalten die gemappt werden sollen:**
 ${columns.map((col, index) => `${index + 1}. "${col}"`).join('\n')}
+${availableTagsSection}
 
 **Anweisungen:**
-1. Ordnen Sie jede Excel-Spalte dem passendsten XBRL-Tag zu
+1. Ordnen Sie JEDE EINZELNE Excel-Spalte dem passendsten XBRL-Tag zu - keine Spalte auslassen!
 2. Berücksichtigen Sie den spezifischen Kontext (${recipient}, ${regulation}, ${perspective})
 3. Geben Sie für jede Zuordnung eine Konfidenz zwischen 0 und 1 an
 4. Fügen Sie kurze Beschreibungen hinzu, warum diese Zuordnung sinnvoll ist
-5. Verwenden Sie etablierte XBRL-Taxonomien (z.B. IFRS, GAAP, lokale Standards)
+5. ${regulation === 'HGB' ? 'Verwenden Sie ausschließlich DE-GAAP Tags (de-gaap-ci:*) für die E-Bilanz' : 'Verwenden Sie etablierte XBRL-Taxonomien (z.B. IFRS, GAAP, lokale Standards)'}
+6. Verwenden Sie spezifische Tags für jeden Bilanzposten - NICHT nur generische Tags wie "bs.ass"
+7. Für Bilanzposten verwenden Sie die Hierarchie: Summen → Hauptgruppen → Untergruppen → Einzelposten
+8. Alle Werte müssen dataType "monetary" haben für Bilanzposten
+9. WICHTIG: Erstellen Sie für ALLE Excel-Spalten ein Mapping - keine Spalte überspringen!
+
+**Mapping-Beispiele für deutsche Bilanz:**
+${regulation === 'HGB' ? `
+- "Summe Aktiva" → "de-gaap-ci:bs.ass"
+- "Anlagevermögen" → "de-gaap-ci:bs.ass.fixAss"  
+- "Sachanlagen" → "de-gaap-ci:bs.ass.fixAss.tan"
+- "Umlaufvermögen" → "de-gaap-ci:bs.ass.currAss"
+- "Kassenbestand" → "de-gaap-ci:bs.ass.currAss.cashEquiv.cash"
+- "Bankguthaben" → "de-gaap-ci:bs.ass.currAss.cashEquiv.bank"
+- "Forderungen aus Lieferungen und Leistungen" → "de-gaap-ci:bs.ass.currAss.receiv.trade"
+- "Vorräte" → "de-gaap-ci:bs.ass.currAss.inventory"
+- "Summe Passiva" → "de-gaap-ci:bs.eqLiab"
+- "Eigenkapital" → "de-gaap-ci:bs.eqLiab.equity"
+- "Gezeichnetes Kapital" → "de-gaap-ci:bs.eqLiab.equity.subscribed"
+- "Gewinnrücklagen" → "de-gaap-ci:bs.eqLiab.equity.retainedEarnings"
+- "Verbindlichkeiten" → "de-gaap-ci:bs.eqLiab.liab"
+- "Verbindlichkeiten gegenüber Kreditinstituten" → "de-gaap-ci:bs.eqLiab.liab.bank"
+- "Rückstellungen" → "de-gaap-ci:bs.eqLiab.provisions"
+` : ''}
 
 **Antwortformat (JSON):**
 {
   "mappings": [
     {
       "excelColumn": "Spaltenname",
-      "xbrlTag": "ifrs-full:Assets",
+      "xbrlTag": "${regulation === 'HGB' ? 'de-gaap-ci:bs.ass' : 'ifrs-full:Assets'}",
       "confidence": 0.95,
       "description": "Kurze Erklärung der Zuordnung",
       "dataType": "monetary",
-      "namespace": "ifrs-full"
+      "namespace": "${regulation === 'HGB' ? 'de-gaap-ci' : 'ifrs-full'}"
     }
   ],
   "reasoning": "Allgemeine Erklärung der Mapping-Strategie",
@@ -134,8 +201,8 @@ ${columns.map((col, index) => `${index + 1}. "${col}"`).join('\n')}
 }
 
 **Wichtige Hinweise:**
-- Verwenden Sie nur existierende XBRL-Tags
-- Berücksichtigen Sie die deutsche Finanzberichterstattung
+- Verwenden Sie nur existierende XBRL-Tags aus der entsprechenden Taxonomie
+- ${regulation === 'HGB' ? 'Für E-Bilanz: Nutzen Sie die deutsche GAAP-Taxonomie (de-gaap-ci-2024-04-01)' : 'Berücksichtigen Sie die deutsche Finanzberichterstattung'}
 - Bei Unsicherheiten geben Sie niedrigere Konfidenzwerte an
 - Unterscheiden Sie zwischen monetären, dezimalen und Text-Werten
 
@@ -157,7 +224,7 @@ export const generateXBRLMapping = async (
       apiKey: process.env.OPENAI_API_KEY,
       organization: process.env.OPENAI_ORGANISATION
     });
-    const prompt = generateMappingPrompt({
+    const prompt = await generateMappingPrompt({
       recipient: formData.recipient as any,
       regulation: formData.regulation as any,
       perspective: formData.perspective as any,
@@ -169,15 +236,15 @@ export const generateXBRLMapping = async (
       messages: [
         {
           role: 'system',
-          content: 'Sie sind ein Experte für XBRL-Taxonomien und Finanzberichterstattung. Antworten Sie immer mit validen JSON.'
+          content: 'Sie sind ein Experte für XBRL-Taxonomien und deutsche E-Bilanz. Antworten Sie immer mit validen JSON und erstellen Sie für JEDE Excel-Spalte ein Mapping.'
         },
         {
           role: 'user',
           content: prompt
         }
       ],
-      temperature: 0.3,
-      max_tokens: 2000,
+      temperature: 0.2,
+      max_tokens: 4000,
       response_format: { type: 'json_object' }
     });
 
@@ -217,6 +284,156 @@ export const generateXBRLMapping = async (
     }
 
     throw new Error(`Fehler beim Generieren des XBRL-Mappings: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+  }
+};
+
+/**
+ * Analyzes Excel column data types using OpenAI for language-independent detection
+ */
+export const analyzeColumnDataTypes = async (
+  columns: ExcelColumn[],
+  formData: FormData
+): Promise<ExcelColumn[]> => {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OpenAI API Key ist nicht konfiguriert.');
+    }
+
+    // Initialize OpenAI client
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      organization: process.env.OPENAI_ORGANISATION
+    });
+
+    // Create analysis prompt for data type detection
+    const analysisPrompt = `
+Analyze these Excel column headers for financial reporting (${formData.regulation}, ${formData.perspective}) and determine their data types.
+
+**Context:**
+- Regulation: ${formData.regulation}
+- Report Type: ${formData.perspective}
+- Institution: ${formData.recipient}
+
+**Columns to analyze:**
+${columns.map((col, idx) => `${idx + 1}. "${col.name}" (sample values: ${col.sampleValues?.slice(0, 3).join(', ') || 'N/A'})`).join('\n')}
+
+**Data Types to classify:**
+- "monetary": Currency amounts (€, $, etc.) - requires unitRef="u1", decimals="0"
+- "decimal": Percentages, ratios, factors - requires unitRef="pure", decimals="2" 
+- "shares": Number of shares, units, counts - requires unitRef="shares", decimals="0"
+- "boolean": True/false, yes/no values - no unitRef needed
+- "date": Date values - no unitRef needed
+- "string": Text values - no unitRef needed
+
+For each column, provide:
+1. Most likely dataType
+2. hasNumericIndicator (true if represents numeric value for XBRL)
+3. confidence (0.0-1.0)
+4. reasoning (brief explanation)
+5. suggestedUnit (u1/pure/shares if numeric)
+6. suggestedDecimals (string: "0", "2", etc. if numeric)
+
+**Response format (JSON only):**
+{
+  "analyses": [
+    {
+      "columnName": "Column Name",
+      "dataType": "monetary|decimal|shares|boolean|date|string",
+      "hasNumericIndicator": true|false,
+      "confidence": 0.95,
+      "reasoning": "Brief explanation",
+      "suggestedUnit": "u1|pure|shares",
+      "suggestedDecimals": "0|2"
+    }
+  ]
+}
+
+Respond with valid JSON only.`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert in financial data analysis and XBRL standards. Analyze column headers to determine appropriate data types for financial reporting. Always respond with valid JSON.'
+        },
+        {
+          role: 'user',
+          content: analysisPrompt
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 2000,
+      response_format: { type: 'json_object' }
+    });
+
+    const responseContent = completion.choices[0]?.message?.content;
+
+    if (!responseContent) {
+      throw new Error('Keine Antwort von OpenAI für Datentyp-Analyse erhalten.');
+    }
+
+    const analysisResponse: { analyses: DataTypeAnalysis[] } = JSON.parse(responseContent);
+
+    if (!analysisResponse.analyses || !Array.isArray(analysisResponse.analyses)) {
+      throw new Error('Ungültige Antwortstruktur für Datentyp-Analyse.');
+    }
+
+    // Map the analysis results back to the columns
+    const analyzedColumns = columns.map(column => {
+      const analysis = analysisResponse.analyses.find(
+        a => a.columnName === column.name || 
+             (a.columnName && column.name.toLowerCase().includes(a.columnName.toLowerCase())) ||
+             (a.columnName && a.columnName.toLowerCase().includes(column.name.toLowerCase()))
+      );
+
+      if (analysis) {
+        const dataTypeAnalysis: DataTypeAnalysis = {
+          dataType: analysis.dataType,
+          hasNumericIndicator: analysis.hasNumericIndicator,
+          confidence: Math.max(0, Math.min(1, analysis.confidence)),
+          reasoning: analysis.reasoning,
+          suggestedUnit: analysis.suggestedUnit,
+          suggestedDecimals: analysis.suggestedDecimals
+        };
+
+        return {
+          ...column,
+          dataTypeAnalysis
+        };
+      }
+
+      // Fallback if no analysis found
+      return {
+        ...column,
+        dataTypeAnalysis: {
+          dataType: 'monetary' as const, // Default for financial reporting
+          hasNumericIndicator: true,
+          confidence: 0.5,
+          reasoning: 'Default classification due to missing analysis',
+          suggestedUnit: 'u1' as const,
+          suggestedDecimals: '0'
+        }
+      };
+    });
+
+    return analyzedColumns;
+
+  } catch (error) {
+    console.error('Error analyzing column data types:', error);
+    
+    // Return columns with default analysis if OpenAI fails
+    return columns.map(column => ({
+      ...column,
+      dataTypeAnalysis: {
+        dataType: 'monetary' as const,
+        hasNumericIndicator: true,
+        confidence: 0.3,
+        reasoning: 'Fallback due to analysis error',
+        suggestedUnit: 'u1' as const,
+        suggestedDecimals: '0'
+      }
+    }));
   }
 };
 

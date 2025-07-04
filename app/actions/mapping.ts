@@ -1,7 +1,7 @@
 'use server';
 
 import { FormData, MappingResult, ExcelColumn, OpenAIMappingResponse, XBRLInstance } from '@/types';
-import { parseExcelFile, generateXBRLMapping, validateExcelFile, validateFormData } from '@/lib/utils';
+import { parseExcelFile, generateXBRLMapping, validateExcelFile, validateFormData, analyzeColumnDataTypes } from '@/lib/utils';
 import { XBRLGenerator } from '@/lib/xbrl-generator';
 
 export async function processFileAndGenerateMapping(
@@ -62,10 +62,22 @@ export async function processFileAndGenerateMapping(
       };
     }
 
-    // Generate XBRL mapping using OpenAI
+    // Analyze column data types using OpenAI
+    let analyzedColumns: ExcelColumn[];
+    try {
+      console.log('Starting OpenAI data type analysis for columns:', columns.map(c => c.name));
+      analyzedColumns = await analyzeColumnDataTypes(columns, formData);
+      console.log('Data type analysis completed successfully');
+    } catch (error) {
+      console.error('Data type analysis error:', error);
+      // Continue with original columns if analysis fails
+      analyzedColumns = columns;
+    }
+
+    // Generate XBRL mapping using OpenAI (with analyzed columns)
     let mappingResponse: OpenAIMappingResponse;
     try {
-      mappingResponse = await generateXBRLMapping(formData, columns);
+      mappingResponse = await generateXBRLMapping(formData, analyzedColumns);
       
       if (!mappingResponse.mappings || mappingResponse.mappings.length === 0) {
         return {
@@ -88,7 +100,8 @@ export async function processFileAndGenerateMapping(
       data: mappingResponse,
       message: 'XBRL-Mapping erfolgreich generiert',
       processingTime,
-      columnsProcessed: columns.length
+      columnsProcessed: analyzedColumns.length,
+      originalColumns: analyzedColumns
     };
 
   } catch (error) {
@@ -170,8 +183,22 @@ export async function regenerateMapping(
       };
     }
 
+    // Check if columns already have data type analysis, if not, analyze them
+    let analyzedColumns = columns;
+    const hasDataTypeAnalysis = columns.some(col => col.dataTypeAnalysis);
+    
+    if (!hasDataTypeAnalysis) {
+      try {
+        console.log('Re-analyzing column data types for regeneration');
+        analyzedColumns = await analyzeColumnDataTypes(columns, formData);
+      } catch (error) {
+        console.error('Data type analysis error during regeneration:', error);
+        // Continue with original columns if analysis fails
+      }
+    }
+
     // Generate XBRL mapping using OpenAI with additional context
-    const mappingResponse = await generateXBRLMapping(formData, columns);
+    const mappingResponse = await generateXBRLMapping(formData, analyzedColumns);
     
     if (!mappingResponse.mappings || mappingResponse.mappings.length === 0) {
       return {
@@ -232,7 +259,7 @@ export async function generateXBRLDocument(
       currency = 'EUR'
     } = options || {};
 
-    // Generate XBRL instance
+    // Generate XBRL instance with realistic German balance sheet values
     const xbrlInstance = XBRLGenerator.generateInstance(
       mappingResponse,
       formData,
@@ -240,7 +267,8 @@ export async function generateXBRLDocument(
       {
         entityId,
         reportingDate,
-        currency
+        currency,
+        analyzedColumns: [] // Could be passed from the original request if needed
       }
     );
 

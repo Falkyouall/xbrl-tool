@@ -18,19 +18,21 @@ import {
   validateExcelFile, 
   formatFileSize 
 } from '@/lib/utils';
+import { useXBRLStore, useFormData, useFileState, useProcessingState } from '@/lib/store';
 import { processFileAndGenerateMapping } from '@/app/actions/mapping';
 
 export default function UploadPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState<FormData>({
-    recipient: '',
-    regulation: '',
-    perspective: ''
-  });
+  
+  // Zustand store hooks
+  const { formData, setFormData } = useFormData();
+  const { setOriginalColumns, setFileInfo } = useFileState();
+  const { isProcessing, setIsProcessing, processingStep, setProcessingStep } = useProcessingState();
+  const { setMappingResult } = useXBRLStore();
+  
+  // Local state for upload-specific UI
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string>('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingStep, setProcessingStep] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
   // Load form data from previous step
@@ -47,8 +49,11 @@ export default function UploadPage() {
       return;
     }
     
-    setFormData(savedData);
-  }, [router]);
+    // Only set if not already set
+    if (!formData.recipient) {
+      setFormData(savedData);
+    }
+  }, [router]); // Remove formData from dependencies
 
   const handleFileSelect = (file: File) => {
     setUploadError('');
@@ -102,7 +107,24 @@ export default function UploadPage() {
 
       setProcessingStep('XBRL-Mapping wird generiert...');
       
-      // Save mapping result to session storage
+      // Save to Zustand store
+      if (result.data) {
+        setMappingResult(result.data);
+      }
+      
+      setFileInfo({
+        name: selectedFile.name,
+        size: selectedFile.size,
+        processingTime: result.processingTime,
+        columnsProcessed: result.columnsProcessed
+      });
+      
+      // Save original columns for regeneration
+      if (result.originalColumns) {
+        setOriginalColumns(result.originalColumns);
+      }
+      
+      // Also save to session storage as backup for page refresh
       saveToSessionStorage('xbrl-mapping-result', result.data);
       saveToSessionStorage('xbrl-file-info', {
         name: selectedFile.name,

@@ -1,36 +1,42 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { FormData } from '@/types';
 import { Card, ProgressIndicator, QuestionForm, Navigation, Alert } from '@/components/ui';
 import { validateFormData, saveToSessionStorage, loadFromSessionStorage } from '@/lib/utils';
+import { useFormData } from '@/lib/store';
 
 export default function HomePage() {
   const router = useRouter();
-  const [formData, setFormData] = useState<FormData>({
-    recipient: '',
-    regulation: '',
-    perspective: ''
-  });
+  
+  // Use Zustand store for form data
+  const { formData, setFormData, updateFormData } = useFormData();
+  
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showAlert, setShowAlert] = useState(false);
+  const hasLoadedInitialData = useRef(false);
 
-  // Load form data from session storage on component mount
+  // Load form data from session storage on component mount (fallback)
   useEffect(() => {
-    const savedData = loadFromSessionStorage<FormData>('xbrl-form-data', {
-      recipient: '',
-      regulation: '',
-      perspective: ''
-    });
-    if (savedData) {
-      setFormData(savedData);
+    if (!hasLoadedInitialData.current) {
+      const savedData = loadFromSessionStorage<FormData>('xbrl-form-data', {
+        recipient: '',
+        regulation: '',
+        perspective: ''
+      });
+      if (savedData && (!formData.recipient && !formData.regulation && !formData.perspective)) {
+        setFormData(savedData);
+      }
+      hasLoadedInitialData.current = true;
     }
-  }, []);
+  }, []); // Remove dependencies to prevent infinite loop
 
-  // Save form data to session storage whenever it changes
+  // Save form data to session storage whenever it changes (for navigation reliability)
   useEffect(() => {
-    saveToSessionStorage('xbrl-form-data', formData);
+    if (formData.recipient || formData.regulation || formData.perspective) {
+      saveToSessionStorage('xbrl-form-data', formData);
+    }
   }, [formData]);
 
   const handleFormChange = (newFormData: FormData) => {

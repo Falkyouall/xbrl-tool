@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xbrl xmlns="http://www.xbrl.org/2003/instance"
+    xmlns:link="http://www.xbrl.org/2003/linkbase"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:xbrldi="http://xbrl.org/2006/xbrldi"
+    xmlns:iso4217="http://www.xbrl.org/2003/iso4217"
+    xmlns:ifrs-full="http://xbrl.ifrs.org/taxonomy/2023-03-23/ifrs-full"
+    xmlns:finrep="http://www.eba.europa.eu/xbrl/crr/fws/finrep/its-005-2020"
+    xmlns:corep="http://www.eba.europa.eu/xbrl/crr/fws/corep/its-005-2020"
+    xmlns:de-gaap-ci="http://www.xbrl.de/taxonomies/de-gaap-ci-2024-04-01"
+    xsi:schemaLocation="http://www.xbrl.org/2003/instance http://www.xbrl.org/2003/xbrl-instance-2003-12-31.xsd">
+
+  <!-- Schema Reference -->
+  
+  <link:schemaRef
+    xlink:type="simple"
+    xlink:href="./taxonomies/de-gaap-ci-2024-04-01/de-gaap-ci-2024-04-01.xsd"
+    xlink:arcrole="http://www.w3.org/1999/xlink/properties/linkbase"/>
+
+  <!-- Metadata Comment -->
+  <!--
+    Generated XBRL Instance Document
+    Entity: ENTITY_1751636916220
+    Period: 2025-07-04
+    Regulation: HGB
+    Perspective: Bilanz
+    Generated: 2025-07-04T13:48:36.239Z
+  -->
+
+  <!-- Contexts -->
+  
+  <context id="c1">
+    <entity>
+      <identifier scheme="http://www.bundesbank.de">ENTITY_1751636916220</identifier>
+    </entity>
+    <period>
+      <instant>2025-07-04</instant>
+    </period>
+    
+  </context>
+
+  <!-- Units -->
+  
+  <unit id="u1">
+    <measure>iso4217:EUR</measure>
+  </unit>
+  <unit id="pure">
+    <measure>pure</measure>
+  </unit>
+  <unit id="shares">
+    <measure>shares</measure>
+  </unit>
+
+  <!-- Facts -->
+  <de-gaap-ci:bs.ass.currAss.receiv.trade contextRef="c1" unitRef="u1" decimals="0">262160</de-gaap-ci:bs.ass.currAss.receiv.trade>
+  <de-gaap-ci:bs.ass contextRef="c1" unitRef="u1" decimals="0">962176</de-gaap-ci:bs.ass>
+
+</xbrl>

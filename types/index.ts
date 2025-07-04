@@ -19,12 +19,24 @@ export interface UploadedFile {
   arrayBuffer: ArrayBuffer;
 }
 
+// OpenAI data type analysis result
+export interface DataTypeAnalysis {
+  columnName?: string;
+  dataType: 'monetary' | 'decimal' | 'string' | 'date' | 'boolean' | 'shares';
+  hasNumericIndicator: boolean;
+  confidence: number;
+  reasoning: string;
+  suggestedUnit?: 'u1' | 'pure' | 'shares';
+  suggestedDecimals?: string;
+}
+
 // Excel column information
 export interface ExcelColumn {
   name: string;
   index: number;
   type?: 'string' | 'number' | 'date' | 'boolean';
   sampleValues?: (string | number | boolean | null)[];
+  dataTypeAnalysis?: DataTypeAnalysis;
 }
 
 // XBRL mapping types
@@ -105,6 +117,7 @@ export interface ServerActionResult<T = any> {
 export interface MappingResult extends ServerActionResult<OpenAIMappingResponse> {
   processingTime?: number;
   columnsProcessed?: number;
+  originalColumns?: ExcelColumn[];
 }
 
 // Progress and loading states
